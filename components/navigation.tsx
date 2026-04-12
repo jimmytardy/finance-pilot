@@ -31,8 +31,8 @@ import {
 
 const navItems = [
   { href: '/', key: 'navigation.data' as const, icon: ClipboardList },
-  { href: '/estimations', key: 'navigation.estimates' as const, icon: LineChart },
   { href: '/gestion-finances', key: 'navigation.advancedFinance' as const, icon: Wallet },
+  { href: '/estimations', key: 'navigation.estimates' as const, icon: LineChart },
   { href: '/comparaison', key: 'navigation.comparison' as const, icon: GitCompare },
 ] as const
 

@@ -36,14 +36,12 @@ pnpm start
 
 ## Scripts npm
 
-
-| Script       | Rôle                             |
-| ------------ | -------------------------------- |
+| Script   | Rôle                          |
+| -------- | ----------------------------- |
 | `pnpm dev`   | Serveur de développement Next.js |
 | `pnpm build` | Compilation optimisée            |
 | `pnpm start` | Serveur après `build`            |
 | `pnpm lint`  | ESLint sur le dépôt              |
-
 
 ## Fonctionnalités principales
 
@@ -119,33 +117,29 @@ flowchart TB
   JsonIO --> Types
 ```
 
-
-
 ### Principes de conception
 
 1. **Types centralisés** (`lib/types.ts`) : modèle unique des entités financières.
 2. **Normalisation à l’entrée** : lecture disque / import JSON passe par `normalizeFinanceData` pour tolérer d’anciennes formes et garantir un objet cohérent.
-3. **Calculs purs** dans `lib/`* (métriques, loyers nets, projections) : plus simples à tester et à faire évoluer sans coupler à React.
+3. **Calculs purs** dans `lib/*` (métriques, loyers nets, projections) : plus simples à tester et à faire évoluer sans coupler à React.
 4. **UI découplée** : sections du tableau de bord dans `components/dashboard/` ; primitives dans `components/ui/`.
 5. **Barrel minimal** : `hooks/use-finance-data.ts` réexporte le provider et le hook du contexte pour un import unique côté `app/providers.tsx`.
 
 ### Routage (pages)
 
-
-| Chemin              | Rôle indicatif                                                                                                  |
-| ------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Chemin              | Rôle indicatif |
+| ------------------- | -------------- |
 | `/`                 | Saisie des données (revenus, charges, budgets annexes, immobilier, investissements), barre export / import JSON |
-| `/estimations`      | Estimations et graphiques associés (lien principal dans la barre du haut)                                       |
-| `/gestion-finances` | Pilotage avancé : planification, tableau des prélèvements, coches mensuelles, graphique de répartition          |
-| `/comparaison`      | Page de comparaison / synthèses                                                                                 |
+| `/gestion-finances` | Gestion mensuelle : planification, prélèvements, coches, graphique de répartition |
+| `/estimations`      | Estimations et graphiques associés |
+| `/comparaison`      | Page de comparaison / synthèses |
 
-
-Les liens **Accueil données** et **Estimations** sont visibles dans la barre ; **Gestion avancée** et **Comparaison** sont dans le menu burger (voir `components/navigation.tsx`, libellés i18n).
+À partir du breakpoint `md`, les quatre liens sont dans la barre ; sur mobile, ils sont regroupés dans le menu burger (`components/navigation.tsx`).
 
 ## Données et persistance
 
 - **Données courantes** : `finance-pilot-data` (migration automatique depuis `finance-dashboard-data` si présente).
-- **Projets** : `finance-pilot-saved-projects` et projet actif `finance-pilot-active-project-id` (migrations depuis les anciennes clés `finance-dashboard-`* / `finance-active-project-id`).
+- **Projets** : `finance-pilot-saved-projects` et projet actif `finance-pilot-active-project-id` (migrations depuis les anciennes clés `finance-dashboard-*` / `finance-active-project-id`).
 - **Coches de planification (mois / lignes)** : `finance-pilot-schedule-completion` (migration depuis `finance-schedule-manual-completion`).
 - **Locale UI** : `finance-pilot-locale` dans `lib/i18n/i18n.ts` (migration depuis `budget-propulsion-locale`).
 - **Thème** : `next-themes`, clé `finance-pilot-theme` (migration depuis `budget-theme`, voir `components/theme-provider.tsx`).
