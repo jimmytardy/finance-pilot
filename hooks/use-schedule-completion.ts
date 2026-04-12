@@ -72,5 +72,19 @@ export function useScheduleCompletion() {
     })
   }, [])
 
-  return { loaded, getCurrentMonthKey: monthKeyFromDate, getDone, setDone, resetMonth }
+  const setManyDone = useCallback((itemKeys: string[], done: boolean, keyMonth = monthKeyFromDate()) => {
+    if (itemKeys.length === 0) return
+    setStore((prev) => {
+      const base = prev[keyMonth] ?? {}
+      const nextMonth = { ...base }
+      for (const k of itemKeys) {
+        nextMonth[k] = done
+      }
+      const next = { ...prev, [keyMonth]: nextMonth }
+      writeStore(next)
+      return next
+    })
+  }, [])
+
+  return { loaded, getCurrentMonthKey: monthKeyFromDate, getDone, setDone, setManyDone, resetMonth }
 }

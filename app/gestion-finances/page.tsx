@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFinanceData } from '@/hooks/use-finance-data'
 import { useScheduleCompletion } from '@/hooks/use-schedule-completion'
@@ -18,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { formatCurrencyAmount } from '@/lib/i18n/locale'
 import {
   effectiveDayInMonth,
@@ -81,10 +82,58 @@ function itemKey(kind: LineKind, id: string) {
   return `${kind}:${id}`
 }
 
+const UNCATEGORIZED_KEY = '__uncategorized__'
+
+type ManualCategoryGroup = {
+  key: string
+  title: string
+  lines: ScheduledLine[]
+  monthlyTotal: number
+}
+
+function buildManualGroups(
+  manualLines: ScheduledLine[],
+  uncategorizedLabel: string,
+  monthKey: string,
+  lang: string,
+): ManualCategoryGroup[] {
+  const parts = monthKey.split('-').map(Number)
+  const y = parts[0] ?? new Date().getFullYear()
+  const mi = (parts[1] ?? 1) - 1
+
+  const byCat = new Map<string, ScheduledLine[]>()
+  for (const line of manualLines) {
+    const raw = line.category.trim()
+    const key = raw || UNCATEGORIZED_KEY
+    const arr = byCat.get(key) ?? []
+    arr.push(line)
+    byCat.set(key, arr)
+  }
+
+  return Array.from(byCat.entries())
+    .map(([key, groupLines]): ManualCategoryGroup => {
+      const title = key === UNCATEGORIZED_KEY ? uncategorizedLabel : key
+      const monthlyTotal = groupLines.reduce((s, l) => s + l.monthlyAmount, 0)
+      const lines = [...groupLines].sort((a, b) => {
+        const da = effectiveDayInMonth(y, mi, a.dayOfMonth)
+        const db = effectiveDayInMonth(y, mi, b.dayOfMonth)
+        if (da !== db) return da - db
+        return a.label.localeCompare(b.label, lang, { sensitivity: 'base' })
+      })
+      return { key, title, lines, monthlyTotal }
+    })
+    .sort((a, b) => {
+      const aUncat = a.key === UNCATEGORIZED_KEY
+      const bUncat = b.key === UNCATEGORIZED_KEY
+      if (aUncat !== bUncat) return aUncat ? 1 : -1
+      return a.title.localeCompare(b.title, lang, { sensitivity: 'base' })
+    })
+}
+
 export default function AdvancedFinancePage() {
   const { t, i18n } = useTranslation()
   const { data, isLoaded } = useFinanceData()
-  const { loaded: completionLoaded, getCurrentMonthKey, getDone, setDone, resetMonth } =
+  const { loaded: completionLoaded, getCurrentMonthKey, getDone, setDone, setManyDone, resetMonth } =
     useScheduleCompletion()
 
   const now = new Date()
@@ -111,6 +160,19 @@ export default function AdvancedFinancePage() {
   }, [lines, t])
 
   const manualLines = useMemo(() => lines.filter((l) => l.paymentMode === 'manual'), [lines])
+
+  const [detailGroup, setDetailGroup] = useState<ManualCategoryGroup | null>(null)
+
+  const manualGroups = useMemo(
+    () =>
+      buildManualGroups(
+        manualLines,
+        t('advancedFinance.uncategorized'),
+        monthKey,
+        i18n.language,
+      ),
+    [manualLines, t, monthKey, i18n.language],
+  )
 
   const upcomingAuto = lines
     .filter((l) => l.paymentMode === 'automatic' && !isAutomaticDebitPastThisMonth(l.dayOfMonth, now))
@@ -234,45 +296,63 @@ export default function AdvancedFinancePage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>{t('advancedFinance.manualColLine')}</TableHead>
-                          <TableHead className="hidden sm:table-cell">{t('advancedFinance.manualColSource')}</TableHead>
                           <TableHead>{t('advancedFinance.manualColCategory')}</TableHead>
-                          <TableHead>{t('advancedFinance.manualColDay')}</TableHead>
+                          <TableHead className="w-[5.5rem] text-right tabular-nums">
+                            {t('advancedFinance.manualColLinesCount')}
+                          </TableHead>
                           <TableHead className="text-right">{t('advancedFinance.manualColAmount')}</TableHead>
-                          <TableHead>{t('advancedFinance.manualColStatus')}</TableHead>
-                          <TableHead className="w-[4.5rem] text-center">{t('advancedFinance.manualColDone')}</TableHead>
+                          <TableHead className="w-[6.5rem] text-center">{t('advancedFinance.manualColProgress')}</TableHead>
+                          <TableHead className="w-[7rem]">{t('advancedFinance.manualColDetails')}</TableHead>
+                          <TableHead className="w-[8.5rem] text-right">{t('advancedFinance.manualColMarkAll')}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {manualLines.map((row) => {
-                          const key = itemKey(row.kind, row.id)
-                          const due = manualTransferDueStatus(row.dayOfMonth, now)
-                          const statusLabel =
-                            due === 'past'
-                              ? t('advancedFinance.manualStatusPast')
-                              : due === 'today'
-                                ? t('advancedFinance.manualStatusToday')
-                                : t('advancedFinance.manualStatusAhead')
-                          const done = completionLoaded && getDone(key, monthKey)
+                        {manualGroups.map((group) => {
+                          const doneCount = completionLoaded
+                            ? group.lines.filter((l) => getDone(itemKey(l.kind, l.id), monthKey)).length
+                            : 0
+                          const allDone = completionLoaded && doneCount >= group.lines.length
+                          const keys = group.lines.map((l) => itemKey(l.kind, l.id))
                           return (
-                            <TableRow key={key}>
-                              <TableCell className="font-medium">{row.label}</TableCell>
-                              <TableCell className="hidden text-muted-foreground sm:table-cell">
-                                {row.kind === 'fixed'
-                                  ? t('advancedFinance.sourceFixed')
-                                  : t('advancedFinance.sourceAnnex')}
+                            <TableRow key={group.key}>
+                              <TableCell className="font-medium">{group.title}</TableCell>
+                              <TableCell className="text-right tabular-nums text-muted-foreground">
+                                {group.lines.length}
                               </TableCell>
-                              <TableCell>{row.category || t('advancedFinance.uncategorized')}</TableCell>
-                              <TableCell>{t('schedule.dayOfMonthShort', { day: row.dayOfMonth })}</TableCell>
-                              <TableCell className="text-right font-mono">{formatCurrency(row.monthlyAmount)}</TableCell>
-                              <TableCell className="text-muted-foreground">{statusLabel}</TableCell>
-                              <TableCell className="text-center">
-                                <Checkbox
-                                  checked={done}
-                                  disabled={!completionLoaded}
-                                  onCheckedChange={(c) => setDone(key, c === true, monthKey)}
-                                  aria-label={t('advancedFinance.manualColDone')}
-                                />
+                              <TableCell className="text-right font-mono font-medium tabular-nums">
+                                {formatCurrency(group.monthlyTotal)}
+                              </TableCell>
+                              <TableCell className="text-center text-sm tabular-nums text-muted-foreground">
+                                {completionLoaded
+                                  ? t('advancedFinance.manualProgressDone', {
+                                      done: doneCount,
+                                      total: group.lines.length,
+                                    })
+                                  : '—'}
+                              </TableCell>
+                              <TableCell>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="whitespace-nowrap"
+                                  onClick={() => setDetailGroup(group)}
+                                >
+                                  {t('advancedFinance.manualColDetails')}
+                                </Button>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Button
+                                  type="button"
+                                  variant="secondary"
+                                  size="sm"
+                                  className="whitespace-nowrap"
+                                  disabled={!completionLoaded || allDone}
+                                  title={t('advancedFinance.manualMarkAllDone')}
+                                  onClick={() => setManyDone(keys, true, monthKey)}
+                                >
+                                  {t('advancedFinance.manualMarkAllDone')}
+                                </Button>
                               </TableCell>
                             </TableRow>
                           )
@@ -306,6 +386,95 @@ export default function AdvancedFinancePage() {
           )}
         </div>
       </main>
+
+      <Dialog open={detailGroup !== null} onOpenChange={(open) => !open && setDetailGroup(null)}>
+        <DialogContent className="flex max-h-[min(85vh,36rem)] max-w-[calc(100vw-2rem)] flex-col gap-4 p-4 sm:max-w-2xl sm:p-6" showCloseButton>
+          {detailGroup && (
+            <>
+              <DialogHeader>
+                <DialogTitle>{t('advancedFinance.detailGroupTitle', { category: detailGroup.title })}</DialogTitle>
+                <p className="text-sm text-muted-foreground">
+                  {t('advancedFinance.detailGroupSubtitle', {
+                    count: detailGroup.lines.length,
+                    total: formatCurrency(detailGroup.monthlyTotal),
+                  })}
+                </p>
+              </DialogHeader>
+              <div className="min-h-0 flex-1 overflow-x-auto overflow-y-auto rounded-md border border-border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t('advancedFinance.manualColLine')}</TableHead>
+                      <TableHead className="hidden sm:table-cell">{t('advancedFinance.manualColSource')}</TableHead>
+                      <TableHead>{t('advancedFinance.manualColDay')}</TableHead>
+                      <TableHead className="text-right">{t('advancedFinance.manualColAmount')}</TableHead>
+                      <TableHead>{t('advancedFinance.manualColStatus')}</TableHead>
+                      <TableHead className="w-[4.5rem] text-center">{t('advancedFinance.manualColDone')}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {detailGroup.lines.map((row) => {
+                      const key = itemKey(row.kind, row.id)
+                      const due = manualTransferDueStatus(row.dayOfMonth, now)
+                      const statusLabel =
+                        due === 'past'
+                          ? t('advancedFinance.manualStatusPast')
+                          : due === 'today'
+                            ? t('advancedFinance.manualStatusToday')
+                            : t('advancedFinance.manualStatusAhead')
+                      const done = completionLoaded && getDone(key, monthKey)
+                      const entity =
+                        row.kind === 'fixed'
+                          ? data.fixedExpenses.find((e) => e.id === row.id)
+                          : data.annexBudgets.find((b) => b.id === row.id)
+                      return (
+                        <TableRow key={key}>
+                          <TableCell className="max-w-[10rem] font-medium sm:max-w-none">
+                            <div className="flex min-w-0 flex-col gap-0.5">
+                              <span className={!entity ? 'text-muted-foreground line-through' : undefined}>
+                                {row.label}
+                              </span>
+                              {!entity && (
+                                <span className="text-xs font-normal text-destructive">
+                                  {t('advancedFinance.detailNoEntity')}
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="hidden text-muted-foreground sm:table-cell">
+                            {row.kind === 'fixed'
+                              ? t('advancedFinance.sourceFixed')
+                              : t('advancedFinance.sourceAnnex')}
+                          </TableCell>
+                          <TableCell className="tabular-nums">
+                            {t('schedule.dayOfMonthShort', { day: row.dayOfMonth })}
+                          </TableCell>
+                          <TableCell className="text-right font-mono tabular-nums">
+                            {formatCurrency(row.monthlyAmount)}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">{statusLabel}</TableCell>
+                          <TableCell className="text-center">
+                            <Checkbox
+                              checked={done}
+                              disabled={!completionLoaded || !entity}
+                              onCheckedChange={(c) => setDone(key, c === true, monthKey)}
+                              aria-label={t('advancedFinance.manualColDone')}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="flex items-center justify-between border-t border-border pt-3 text-sm font-semibold">
+                <span>{t('advancedFinance.detailGroupTotalRow')}</span>
+                <span className="font-mono tabular-nums">{formatCurrency(detailGroup.monthlyTotal)}</span>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
