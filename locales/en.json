@@ -1,7 +1,18 @@
 {
   "meta": {
     "appName": "Finance Pilot",
-    "appDescription": "Track income, spending, investments, and rental properties. Data stored locally."
+    "appDescription": "Budget management, planning, and forecasting through to investment estimates: income, expenses, rentals, savings. Free web app with local-first data.",
+    "siteKeywords": [
+      "budget management",
+      "financial planning",
+      "cash flow forecasting",
+      "investment estimate",
+      "household budget",
+      "savings tracker",
+      "rental property finance",
+      "scenario comparison",
+      "Finance Pilot"
+    ]
   },
   "time": {
     "now": "Now",
@@ -41,6 +52,114 @@
     "themeSystem": "System",
     "themeLight": "Light",
     "themeDark": "Dark"
+  },
+  "homePage": {
+    "metaTitle": "Finance Pilot — budget planning, cash-flow control & investment forecasts",
+    "metaDescription": "Plan and steer your household budget: income and spending, monthly follow-up, long-term investment projections and portfolio estimates. Compare scenarios—everything stays on your device.",
+    "keywords": [
+      "budget planning",
+      "personal finance management",
+      "cash flow forecasting",
+      "investment estimate",
+      "household budget",
+      "savings and investing",
+      "expense tracking",
+      "rental property budget",
+      "financial projections",
+      "scenario comparison",
+      "Finance Pilot"
+    ],
+    "schemaFeatureList": [
+      "Income, fixed costs, and annex budgets in one place",
+      "Monthly budget execution and due dates",
+      "Investment projections over 10–30 years with charts",
+      "Side-by-side comparison of financial scenarios"
+    ],
+    "heroTitle": "Plan your budget from data entry to forecasts",
+    "heroLead": "Finance Pilot brings together income, fixed expenses, annex budgets, rental properties, and investments. Run estimates and comparisons without sending your figures to a server.",
+    "ctaPrimary": "Open data entry",
+    "ctaSecondary": "Monthly management",
+    "sectionsTitle": "Explore the modules",
+    "privacyTitle": "Privacy and projects",
+    "privacyText": "No account required. Save scenarios locally as named projects or export JSON. Switch the interface language (French or English) from the header.",
+    "featureCards": [
+      {
+        "href": "/donnees",
+        "title": "Data entry",
+        "description": "Monthly or yearly income, scheduled expenses, annex budgets, rentals, investments, and cash available to invest."
+      },
+      {
+        "href": "/gestion-finances",
+        "title": "Monthly management",
+        "description": "Due dates, direct debits, checklists, and a breakdown chart to stay on top of day-to-day cash flow."
+      },
+      {
+        "href": "/estimations",
+        "title": "Forecasts",
+        "description": "Charts and projections from your assumptions so you can see where your plan is heading."
+      },
+      {
+        "href": "/comparaison",
+        "title": "Compare",
+        "description": "Compare scenarios or review the key figures from your current setup."
+      }
+    ]
+  },
+  "seo": {
+    "donnees": {
+      "title": "Budget data entry & planning",
+      "description": "Capture income, fixed and annex budgets, rental properties, and investments to steer your monthly plan. See cash available to invest, export or import JSON—your figures never leave your device.",
+      "keywords": [
+        "budget planning",
+        "personal budget spreadsheet alternative",
+        "income and expenses",
+        "fixed costs",
+        "household cash flow",
+        "rental property tracking",
+        "investment inputs",
+        "cash to invest",
+        "local-first finance app",
+        "JSON export personal finance"
+      ]
+    },
+    "gestionFinances": {
+      "title": "Monthly budget execution",
+      "description": "Run your budget month by month: due dates, direct debits vs manual transfers, completion checks, and a spending breakdown chart so you stay on plan.",
+      "keywords": [
+        "monthly budget tracking",
+        "bill payment calendar",
+        "direct debit schedule",
+        "spending breakdown",
+        "budget discipline",
+        "recurring expenses",
+        "personal finance dashboard"
+      ]
+    },
+    "estimations": {
+      "title": "Investment forecasts & projections",
+      "description": "Chart portfolio growth over 10–30 years, split contributions and gains, and connect income, spending, and rentals for realistic investment estimates.",
+      "keywords": [
+        "investment projection calculator",
+        "portfolio growth estimate",
+        "long-term savings forecast",
+        "retirement-style projections",
+        "compound growth chart",
+        "investment assumptions",
+        "budget linked to investing"
+      ]
+    },
+    "comparaison": {
+      "title": "Compare budget scenarios",
+      "description": "Put your draft next to saved projects: balances, cash flow, investment curves, and headline metrics side by side to decide which plan fits your goals.",
+      "keywords": [
+        "scenario comparison",
+        "what-if budget analysis",
+        "compare financial plans",
+        "investment scenario side by side",
+        "named budget projects",
+        "financial decision support"
+      ]
+    }
   },
   "savedProjects": {
     "newProjectLabel": "New project (copy of current draft)",

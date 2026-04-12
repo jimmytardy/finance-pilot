@@ -30,7 +30,7 @@ import {
 } from '@/components/ui/sheet'
 
 const navItems = [
-  { href: '/', key: 'navigation.data' as const, icon: ClipboardList },
+  { href: '/donnees', key: 'navigation.data' as const, icon: ClipboardList },
   { href: '/gestion-finances', key: 'navigation.advancedFinance' as const, icon: Wallet },
   { href: '/estimations', key: 'navigation.estimates' as const, icon: LineChart },
   { href: '/comparaison', key: 'navigation.comparison' as const, icon: GitCompare },
