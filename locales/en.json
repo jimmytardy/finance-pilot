@@ -38,7 +38,6 @@
     "projects": "Projects",
     "newDraft": "New draft",
     "newDraftTitle": "Reset to starter example (~€2,000/month net)",
-    "confirmNewDraft": "Reset the draft? Changes not saved to a project will be lost.",
     "languageFr": "Français",
     "languageEn": "English",
     "moreMenu": "Menu",
@@ -156,7 +155,6 @@
     "activeBadge": "Active",
     "autoSaveActive": "Auto-saving to “{{name}}”",
     "autoSaveDraft": "Draft: load a project to attach changes to a named snapshot.",
-    "confirmLoad": "Replace the on-screen data with this project? Unsaved changes not stored in another project will be lost (the current draft will be overwritten).",
     "confirmDelete": "Delete project “{{name}}”?"
   },
   "dataPage": {

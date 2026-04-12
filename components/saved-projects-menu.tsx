@@ -9,12 +9,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { FilePlus2, FolderOpen, Loader2, Save, Trash2, Upload } from 'lucide-react'
 import { isFinanceDataEmpty } from '@/lib/finance-defaults'
 import i18n from '@/lib/i18n/i18n'
 import { getLocalizedExampleFinanceData } from '@/lib/example-finance-localized'
 import { numberLocaleForLanguage } from '@/lib/i18n/locale'
+import { uniqueDateBackupProjectName } from '@/lib/unique-date-project-name'
 
 const AUTO_SAVE_MS = 500
 
@@ -91,10 +91,39 @@ export function SavedProjectsMenu() {
     setNewName('')
   }
 
+  /** Écrit tout de suite le brouillon courant dans le projet actif (avant chargement / reset). */
+  const flushActiveProjectToStore = () => {
+    const id = activeProjectId
+    if (!id || !financeLoaded || !projectsLoaded) return
+    const current = projects.find((p) => p.id === id)
+    if (!current) return
+    try {
+      if (JSON.stringify(current.data) === JSON.stringify(data)) return
+    } catch {
+      /* comparer a échoué, on sauvegarde quand même */
+    }
+    updateProjectSnapshot(id, data)
+  }
+
+  /**
+   * Brouillon sans projet lié : enregistrer une copie nommée (date du jour, suffixe -2, -3… si besoin)
+   * avant de charger un autre projet ou de réinitialiser.
+   */
+  const persistOrphanDraftIfNeeded = () => {
+    if (activeProjectId != null) return
+    if (!financeLoaded || !projectsLoaded) return
+    if (isFinanceDataEmpty(data)) return
+    const name = uniqueDateBackupProjectName(projects)
+    addProject(name, data)
+  }
+
   const handleLoad = (id: string) => {
     const project = projects.find((p) => p.id === id)
     if (!project) return
-    if (!confirm(t('savedProjects.confirmLoad'))) {
+    persistOrphanDraftIfNeeded()
+    flushActiveProjectToStore()
+    if (id === activeProjectId) {
+      setOpen(false)
       return
     }
     importFinanceData(project.data)
@@ -108,7 +137,8 @@ export function SavedProjectsMenu() {
   }
 
   const handleNewDraft = () => {
-    if (!confirm(t('navigation.confirmNewDraft'))) return
+    persistOrphanDraftIfNeeded()
+    flushActiveProjectToStore()
     setActiveProjectId(null)
     startNewDraft()
     setOpen(false)
@@ -122,8 +152,12 @@ export function SavedProjectsMenu() {
           {t('navigation.projects')}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-[min(100vw-2rem,22rem)] p-0">
-        <div className="border-b border-border px-3 py-2">
+      <PopoverContent
+        align="end"
+        collisionPadding={12}
+        className="flex max-h-[min(85dvh,28rem)] min-h-0 w-[min(100vw-2rem,22rem)] flex-col overflow-hidden p-0"
+      >
+        <div className="shrink-0 border-b border-border px-3 py-2">
           {activeProject ? (
             <p className="text-xs leading-snug text-primary">
               {t('savedProjects.autoSaveActive', { name: activeProject.name })}
@@ -147,7 +181,7 @@ export function SavedProjectsMenu() {
           </Button>
         </div>
 
-        <div className="border-b border-border p-3">
+        <div className="shrink-0 border-b border-border p-3">
           <Label htmlFor="new-project-name" className="text-xs text-muted-foreground">
             {t('savedProjects.newProjectLabel')}
           </Label>
@@ -167,15 +201,15 @@ export function SavedProjectsMenu() {
           </div>
         </div>
 
-        <div className="px-3 py-2">
+        <div className="shrink-0 px-3 py-2">
           <p className="text-xs font-medium text-muted-foreground">{t('savedProjects.savedList')}</p>
         </div>
 
         {projects.length === 0 ? (
-          <p className="px-3 pb-4 text-sm text-muted-foreground">{t('savedProjects.empty')}</p>
+          <p className="shrink-0 px-3 pb-4 text-sm text-muted-foreground">{t('savedProjects.empty')}</p>
         ) : (
-          <ScrollArea className="max-h-64">
-            <ul className="flex flex-col gap-1 px-2 pb-3">
+          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-2 pb-3">
+            <ul className="flex flex-col gap-1">
               {projects.map((p) => (
                 <li
                   key={p.id}
@@ -213,7 +247,7 @@ export function SavedProjectsMenu() {
                 </li>
               ))}
             </ul>
-          </ScrollArea>
+          </div>
         )}
       </PopoverContent>
     </Popover>

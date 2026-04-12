@@ -38,7 +38,6 @@
     "projects": "Projets",
     "newDraft": "Nouveau brouillon",
     "newDraftTitle": "Réinitialiser sur l’exemple (~2 000 €/mois)",
-    "confirmNewDraft": "Réinitialiser le brouillon ? Les modifications non enregistrées dans un projet seront perdues.",
     "languageFr": "Français",
     "languageEn": "English",
     "moreMenu": "Menu",
@@ -156,7 +155,6 @@
     "activeBadge": "Actif",
     "autoSaveActive": "Enregistrement auto dans « {{name}} »",
     "autoSaveDraft": "Brouillon : chargez un projet pour lier les changements à un enregistrement nommé.",
-    "confirmLoad": "Remplacer les données affichées par ce projet ? Les modifications non enregistrées dans un autre projet seront perdues (le brouillon en cours sera écrasé).",
     "confirmDelete": "Supprimer le projet « {{name}} » ?"
   },
   "dataPage": {
