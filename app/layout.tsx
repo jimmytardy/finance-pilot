@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next'
+import { Plus_Jakarta_Sans } from 'next/font/google'
 import Script from 'next/script'
 import fr from '@/locales/fr.json'
 import { Providers } from '@/app/providers'
@@ -50,6 +51,12 @@ export const viewport: Viewport = {
   initialScale: 1,
 }
 
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ['latin', 'latin-ext'],
+  display: 'swap',
+  variable: '--font-app-sans',
+})
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -59,8 +66,8 @@ export default function RootLayout({
   const matomoBaseWithSlash = matomo ? `${matomo.baseUrl.replace(/\/$/, '')}/` : ''
 
   return (
-    <html lang="fr" suppressHydrationWarning>
-      <body className="font-sans antialiased">
+    <html lang="fr" suppressHydrationWarning className={plusJakartaSans.variable}>
+      <body className={`${plusJakartaSans.className} antialiased`}>
         {matomo ? (
           <Script id="matomo-finance-pilot" strategy="lazyOnload">
             {[
