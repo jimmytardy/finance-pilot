@@ -7,16 +7,7 @@ const port = String(process.env.PORT || '3100')
 const hostname = process.env.HOSTNAME || '127.0.0.1'
 
 /**
- * PM2 — production (variables depuis `.env.production` puis `.env` à la racine).
- *
- *   cp config/environments/production.env.example .env.production
- *   cd /chemin/vers/finance-pilot
- *   pnpm install --frozen-lockfile
- *   pnpm build
- *   pm2 start ecosystem.config.cjs
- *
- *   pm2 save
- *   pm2 startup   # pour relancer au boot (suivre les instructions affichées)
+ * PM2 — production (`.env.production` puis `.env`).
  */
 module.exports = {
   apps: [

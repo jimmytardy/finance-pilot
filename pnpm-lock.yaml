@@ -107,6 +107,9 @@ importers:
       date-fns:
         specifier: 4.1.0
         version: 4.1.0
+      dotenv:
+        specifier: ^16.4.7
+        version: 16.6.1
       embla-carousel-react:
         specifier: 8.6.0
         version: 8.6.0(react@19.2.5)
@@ -183,6 +186,13 @@ importers:
       typescript:
         specifier: 5.7.3
         version: 5.7.3
+    optionalDependencies:
+      '@tailwindcss/oxide-linux-arm64-gnu':
+        specifier: 4.2.2
+        version: 4.2.2
+      '@tailwindcss/oxide-linux-x64-gnu':
+        specifier: 4.2.2
+        version: 4.2.2
 
 packages:
 
@@ -1314,6 +1324,10 @@ packages:
 
   dom-helpers@5.2.1:
     resolution: {integrity: sha512-nRCa7CK3VTrM2NmGkIy4cbK7IZlgBE/PYMn55rrXefr5xXDP0LdtfPnblFDoVdcAfslJ7or6iqAUnx0CCGIWQA==}
+
+  dotenv@16.6.1:
+    resolution: {integrity: sha512-uBq4egWHTcTt33a72vpSG0z3HnPuIl6NqYcTrKEg2azoEyl2hpW0zqlxysq2pK9HlDIHyHyakeYaYnSAwd8bow==}
+    engines: {node: '>=12'}
 
   electron-to-chromium@1.5.335:
     resolution: {integrity: sha512-q9n5T4BR4Xwa2cwbrwcsDJtHD/enpQ5S1xF1IAtdqf5AAgqDFmR/aakqH3ChFdqd/QXJhS3rnnXFtexU7rax6Q==}
@@ -2814,6 +2828,8 @@ snapshots:
     dependencies:
       '@babel/runtime': 7.29.2
       csstype: 3.2.3
+
+  dotenv@16.6.1: {}
 
   electron-to-chromium@1.5.335: {}
 

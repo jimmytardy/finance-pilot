@@ -61,6 +61,10 @@
     "vaul": "^1.1.2",
     "zod": "^3.24.1"
   },
+  "optionalDependencies": {
+    "@tailwindcss/oxide-linux-arm64-gnu": "4.2.2",
+    "@tailwindcss/oxide-linux-x64-gnu": "4.2.2"
+  },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.0",
     "@types/node": "^22",
