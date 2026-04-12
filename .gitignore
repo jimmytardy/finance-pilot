@@ -39,8 +39,11 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# local env files
+# local env files (ne pas versionner les secrets ni les valeurs par machine)
 .env
+.env.development
+.env.production
+.env.test
 .env*.local
 .env.development.local
 .env.test.local
