@@ -62,7 +62,7 @@ export default function RootLayout({
     <html lang="fr" suppressHydrationWarning>
       <body className="font-sans antialiased">
         {matomo ? (
-          <Script id="matomo-finance-pilot" strategy="afterInteractive">
+          <Script id="matomo-finance-pilot" strategy="lazyOnload">
             {[
               'var _paq = window._paq = window._paq || [];',
               "_paq.push(['trackPageView']);",

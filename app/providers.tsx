@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react'
 import { useEffect } from 'react'
 import { I18nextProvider } from 'react-i18next'
-import { FinanceDataProvider } from '@/hooks/use-finance-data'
+import { ConditionalFinanceProvider } from '@/components/conditional-finance-provider'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/sonner'
 import i18n, { LOCALE_STORAGE_KEY, readStoredLocale } from '@/lib/i18n/i18n'
@@ -46,7 +46,7 @@ export function Providers({ children }: { children: ReactNode }) {
     <ThemeProvider>
       <I18nextProvider i18n={i18n}>
         <I18nEffects />
-        <FinanceDataProvider>{children}</FinanceDataProvider>
+        <ConditionalFinanceProvider>{children}</ConditionalFinanceProvider>
       </I18nextProvider>
       <Toaster />
     </ThemeProvider>

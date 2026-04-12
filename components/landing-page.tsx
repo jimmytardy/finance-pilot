@@ -1,6 +1,16 @@
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
-import { Navigation } from '@/components/navigation'
+
+const LandingNavigation = dynamic(() => import('@/components/landing-navigation'), {
+  ssr: true,
+  loading: () => (
+    <div
+      className="sticky top-0 z-50 h-16 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
+      aria-hidden
+    />
+  ),
+})
 import { buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
@@ -15,7 +25,7 @@ export function LandingPage({ locale }: { locale: HomeLocale }) {
 
   return (
     <>
-      <Navigation />
+      <LandingNavigation />
       <main className="min-h-screen bg-background">
         <div className="border-b border-border bg-gradient-to-b from-accent/25 to-background">
           <div className="mx-auto max-w-7xl px-4 py-16 sm:py-20">

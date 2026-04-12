@@ -1,18 +1,14 @@
 {
   "meta": {
     "appName": "Finance Pilot",
-    "appDescription": "Gestion, pilotage et planification de budget personnel jusqu’aux estimations d’investissement : revenus, charges, immobilier locatif, épargne. Application web gratuite, données stockées localement.",
+    "appDescription": "Application web pour anticiper l’argent du foyer : flux, épargne, locatif et placements, avec graphiques et comparatifs. Gratuit, sans compte obligatoire, traitement des chiffres sur votre appareil.",
     "siteKeywords": [
-      "gestion de budget",
-      "planification budgétaire",
-      "pilotage financier",
-      "estimation investissement",
-      "prévision trésorerie",
-      "budget familial",
-      "épargne",
-      "immobilier locatif",
-      "comparaison de scénarios",
-      "Finance Pilot"
+      "budget personnel en ligne",
+      "prévision de trésorerie",
+      "projection épargne et patrimoine",
+      "simulateur finances locales",
+      "comparateur de scénarios",
+      "immobilier locatif et cash-flow"
     ]
   },
   "time": {
@@ -38,7 +34,7 @@
     "data": "Données",
     "estimates": "Estimation",
     "comparison": "Comparaison",
-    "advancedFinance": "Gestion mensuel",
+    "advancedFinance": "Gestion mensuelle",
     "projects": "Projets",
     "newDraft": "Nouveau brouillon",
     "newDraftTitle": "Réinitialiser sur l’exemple (~2 000 €/mois)",
@@ -55,31 +51,25 @@
     "themeDark": "Sombre"
   },
   "homePage": {
-    "metaTitle": "Finance Pilot — gestion, pilotage et planification de budget (+ estimations investissement)",
-    "metaDescription": "Outil gratuit de gestion du budget et pilotage financier personnel : saisie des flux, planification mensuelle, projections et estimation d’investissements (épargne, patrimoine). Données locales, comparaison de scénarios.",
+    "metaTitle": "Finance Pilot — budget perso, trésorerie et projections patrimoine",
+    "metaDescription": "Anticipez rentrées et dépenses, pilotez l’épargne et visualisez l’évolution potentielle de vos placements sur 10 à 30 ans. Comparez des hypothèses côte à côte : aucun compte requis, calculs dans votre navigateur.",
     "keywords": [
-      "gestion de budget",
-      "planification budgétaire",
-      "pilotage financier",
-      "estimation investissement",
-      "prévision budget",
-      "budget familial",
-      "épargne et investissement",
-      "outil de trésorerie",
-      "préparer son budget",
-      "suivi des charges",
-      "projections patrimoine",
-      "immobilier locatif",
-      "Finance Pilot"
+      "budget personnel en ligne",
+      "prévision de trésorerie",
+      "projection épargne long terme",
+      "simulateur patrimoine navigateur",
+      "comparateur scénarios financiers",
+      "locatif et cash-flow intégrés"
     ],
     "schemaFeatureList": [
-      "Saisie des revenus, charges fixes et budgets annexes",
-      "Gestion mensuelle et suivi des échéances",
-      "Estimations et graphiques d’investissement sur 10 à 30 ans",
-      "Comparaison de scénarios budgétaires"
+      "Saisie des revenus, charges fixes et enveloppes budgétaires",
+      "Calendrier mensuel des échéances et du suivi des dépenses",
+      "Courbes d’investissement sur 10 à 30 ans à partir de vos hypothèses",
+      "Tableaux comparatifs entre brouillon et projets enregistrés",
+      "Traitement local des données, export et import JSON"
     ],
-    "heroTitle": "Pilotez votre budget personnel, de la saisie aux estimations",
-    "heroLead": "Finance Pilot centralise vos revenus, vos charges fixes, vos budgets annexes, votre immobilier locatif et vos investissements. Obtenez des estimations et des comparatifs sans que vos données ne quittent votre appareil.",
+    "heroTitle": "Anticipez votre argent : du quotidien aux projections sur plusieurs années",
+    "heroLead": "Regroupez revenus, charges récurrentes, enveloppes dédiées, biens loués et supports d’épargne. Visualisez l’impact de vos choix avec des graphiques et des comparaisons, sans envoyer vos montants à un serveur distant.",
     "ctaPrimary": "Ouvrir la saisie des données",
     "ctaSecondary": "Gestion mensuelle",
     "sectionsTitle": "Accéder aux modules",
@@ -89,89 +79,68 @@
       {
         "href": "/donnees",
         "title": "Saisie des données",
-        "description": "Revenus mensuels ou annuels, charges programmées, budgets annexes, biens locatifs, investissements et disponible à investir."
+        "description": "Encodez salaires ou revenus variables, loyers encaissés, mensualités, enveloppes (vacances, véhicule), biens en location et supports : le tableau calcule ce qu’il reste à placer."
       },
       {
         "href": "/gestion-finances",
         "title": "Gestion mensuelle",
-        "description": "Suivi des échéances, prélèvements, coches et graphique de répartition pour garder le contrôle au quotidien."
+        "description": "Calendrier des prélèvements, cases à cocher quand c’est payé et vue d’ensemble des postes pour repérer rapidement les écarts au plan."
       },
       {
         "href": "/estimations",
         "title": "Estimations",
-        "description": "Projections et graphiques à partir de vos hypothèses, pour anticiper l’évolution de votre situation."
+        "description": "Courbes sur le long terme à partir de votre taux de rendement moyen et de vos versements, pour voir où une discipline d’épargne peut mener."
       },
       {
         "href": "/comparaison",
         "title": "Comparaison",
-        "description": "Comparez des scénarios ou synthétisez les éléments clés de votre configuration actuelle."
+        "description": "Alignez deux versions (brouillon contre projet sauvegardé) : soldes, flux et courbes d’épargne pour trancher entre plusieurs stratégies."
       }
     ]
   },
   "seo": {
     "donnees": {
-      "title": "Saisie et planification budgétaire",
-      "description": "Centralisez revenus, charges fixes, budgets annexes, immobilier locatif et investissements pour piloter votre budget. Calculez le disponible à investir, exportez ou importez vos données en JSON — tout reste sur votre appareil.",
+      "title": "Saisie revenus, charges et patrimoine pour votre tableau de trésorerie",
+      "description": "Un seul écran pour les flux du foyer, le locatif et les supports d’épargne : le disponible à investir se met à jour au fil des saisies. Export JSON sur votre appareil, import pour restaurer une copie.",
       "keywords": [
-        "planification budgétaire",
-        "gestion de budget",
-        "pilotage financier",
-        "revenus et charges",
-        "charges fixes",
-        "budget familial",
-        "trésorerie personnelle",
-        "immobilier locatif",
-        "investissements",
-        "disponible à investir",
-        "épargne",
-        "outil budget",
-        "prévision de budget",
-        "export JSON données financières"
+        "tableau revenus dépenses",
+        "disponible à investir calcul",
+        "données financières JSON local",
+        "loyers et crédits immobilier",
+        "enveloppes budgétaires personnalisées"
       ]
     },
     "gestionFinances": {
-      "title": "Gestion et suivi du budget mensuel",
-      "description": "Suivez au jour le jour votre budget : échéances, prélèvements automatiques ou virements manuels, coches de réalisation et graphique de répartition des dépenses pour une gestion budgétaire concrète.",
+      "title": "Calendrier mensuel : échéances, prélèvements et suivi des postes",
+      "description": "Visualisez ce qui doit sortir chaque mois, cochez ce qui est réglé et consultez la répartition par catégorie pour repérer les postes qui tirent le plus sur le compte courant.",
       "keywords": [
-        "suivi de budget",
-        "gestion mensuelle budget",
-        "échéances prélèvements",
-        "répartition des dépenses",
-        "contrôle des dépenses",
-        "planification mensuelle",
-        "charges récurrentes",
-        "tableau de bord budget",
-        "organisation financière personnelle"
+        "calendrier prélèvements bancaires",
+        "suivi mensuel dépenses",
+        "répartition par catégorie",
+        "charges récurrentes à date",
+        "organisation argent du quotidien"
       ]
     },
     "estimations": {
-      "title": "Estimations d’investissements et projections",
-      "description": "Visualisez la croissance potentielle de votre portefeuille (10, 20 ou 30 ans), anticipez l’épargne et les plus-values, et croisez revenus, charges et immobilier pour des estimations d’investissement personnalisées.",
+      "title": "Projections d’épargne et de portefeuille sur 10 à 30 ans",
+      "description": "Ajustez versements, rendement moyen et horizon : l’outil trace l’évolution indicative du capital. Utile pour visualiser l’effet du temps et des taux, sans promesse de performance réelle.",
       "keywords": [
-        "estimation investissement",
-        "projection épargne",
-        "simulation placement",
-        "capital investi",
-        "croissance portefeuille",
-        "prévision patrimoine",
-        "long terme investissement",
-        "graphiques investissement",
-        "budget et investissements",
-        "anticipation financière"
+        "courbe capital long terme",
+        "hypothèse taux moyen",
+        "versements programmés",
+        "visualisation patrimoine",
+        "graphique épargne retraite"
       ]
     },
     "comparaison": {
-      "title": "Comparaison de scénarios budgétaires",
-      "description": "Comparez votre brouillon à des projets enregistrés : soldes, flux, projections d’investissements et indicateurs clés côte à côte pour arbitrer vos hypothèses de planification budgétaire.",
+      "title": "Comparer deux plans : brouillon et projets enregistrés",
+      "description": "Mettez en regard indicateurs, flux et courbes d’épargne pour décider quelle version de votre planification conserver : idéal avant un changement de vie ou un arbitrage patrimonial.",
       "keywords": [
-        "comparaison budget",
-        "scénarios financiers",
-        "arbitrage investissement",
-        "analyse budgétaire",
-        "deux scénarios",
-        "pilotage budgétaire",
-        "projets financiers nommés",
-        "synthèse patrimoine"
+        "analyse comparative finances",
+        "deux plans côte à côte",
+        "arbitrage entre hypothèses",
+        "projets nommés sauvegardés",
+        "synthèse indicateurs clés"
       ]
     }
   },

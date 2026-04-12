@@ -69,7 +69,9 @@ function NavLink({
   )
 }
 
-export function Navigation() {
+export type NavigationVariant = 'full' | 'marketing'
+
+export function Navigation({ variant = 'full' }: { variant?: NavigationVariant }) {
   const pathname = usePathname()
   const { t, i18n } = useTranslation()
   const { theme, setTheme } = useTheme()
@@ -120,7 +122,7 @@ export function Navigation() {
           </div>
 
           <div className="ml-auto flex shrink-0 items-center gap-2">
-            <SavedProjectsMenu />
+            {variant === 'full' ? <SavedProjectsMenu /> : null}
 
             {/* Thème : visible sur desktop ; dans le menu burger sur mobile */}
             <Button
