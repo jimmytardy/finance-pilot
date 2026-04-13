@@ -10,7 +10,7 @@ Application web de **pilotage de budget personnel** : revenus, charges fixes, bu
 - [Fonctionnalités principales](#fonctionnalités-principales)
 - [Architecture](#architecture)
 - [Données et persistance](#données-et-persistance)
-- [Internationalisation](#internationalisation)NEXT_PUBLIC_MATOMO_SITE_ID
+- [Internationalisation](#internationalisation)
 - [Qualité et évolution](#qualité-et-évolution)
 
 ## Prérequis
@@ -131,16 +131,19 @@ flowchart TB
 
 ### Routage (pages)
 
+| Chemin                         | Rôle indicatif                                                                                                  |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| `/`                            | Accueil : hero, **liste des guides** (`#guides`), modules simulateur, confidentialité                             |
+| `/guides/…`                    | Fiches guides (4 étapes, 7 stratégies, budget-trésorerie, questionnaire profil) — l’index `/guides` redirige vers `/#guides` |
+| `/simulateur`                  | Hub du simulateur (cartes vers les sous-pages)                                                                  |
+| `/simulateur/donnees`          | Saisie des données (revenus, charges, budgets annexes, immobilier, investissements), barre export / import JSON   |
+| `/simulateur/gestion-mensuel`  | Gestion mensuelle : planification, prélèvements, coches, graphique de répartition                               |
+| `/simulateur/estimations`      | Estimations et graphiques associés                                                                              |
+| `/simulateur/comparaison`      | Page de comparaison / synthèses                                                                                 |
 
-| Chemin              | Rôle indicatif                                                                                                  |
-| ------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `/`                 | Saisie des données (revenus, charges, budgets annexes, immobilier, investissements), barre export / import JSON |
-| `/gestion-finances` | Gestion mensuelle : planification, prélèvements, coches, graphique de répartition                               |
-| `/estimations`      | Estimations et graphiques associés                                                                              |
-| `/comparaison`      | Page de comparaison / synthèses                                                                                 |
+Les anciennes URLs (`/donnees`, `/gestion-finances`, `/estimations`, `/comparaison`) redirigent en **308** vers les chemins ci-dessus (`next.config.mjs`). L’URL **`/guides`** (index) redirige en **308** vers **`/#guides`** sur l’accueil.
 
-
-À partir du breakpoint `md`, les quatre liens sont dans la barre ; sur mobile, ils sont regroupés dans le menu burger (`components/navigation.tsx`).
+À partir du breakpoint `md`, les liens du simulateur sont dans la barre ; sur mobile, ils sont regroupés dans le menu burger (`components/navigation.tsx`).
 
 ## Données et persistance
 

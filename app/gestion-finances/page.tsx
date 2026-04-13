@@ -4,7 +4,6 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFinanceData } from '@/hooks/use-finance-data'
 import { useScheduleCompletion } from '@/hooks/use-schedule-completion'
-import { Navigation } from '@/components/navigation'
 import { BreakdownChart } from '@/components/dashboard/breakdown-chart'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -200,24 +199,19 @@ export default function AdvancedFinancePage() {
 
   if (!isLoaded) {
     return (
-      <>
-        <Navigation />
-        <main className="min-h-screen bg-background">
-          <div className="max-w-7xl mx-auto px-4 py-8">
-            <Skeleton className="h-10 w-72 mb-2" />
-            <Skeleton className="h-5 w-full max-w-xl mb-8" />
-            <Skeleton className="h-80 w-full" />
-          </div>
-        </main>
-      </>
+      <main className="min-h-screen bg-background">
+        <div className="mx-auto max-w-7xl px-4 py-8">
+          <Skeleton className="mb-2 h-10 w-72" />
+          <Skeleton className="mb-8 h-5 w-full max-w-xl" />
+          <Skeleton className="h-80 w-full" />
+        </div>
+      </main>
     )
   }
 
   return (
-    <>
-      <Navigation />
-      <main className="min-h-screen bg-background">
-        <div className="max-w-7xl mx-auto px-4 py-8">
+    <main className="min-h-screen bg-background">
+      <div className="mx-auto max-w-7xl px-4 py-8">
           <header className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h1 className="text-3xl font-bold text-balance">{t('advancedFinance.title')}</h1>
@@ -385,7 +379,6 @@ export default function AdvancedFinancePage() {
             </div>
           )}
         </div>
-      </main>
 
       <Dialog open={detailGroup !== null} onOpenChange={(open) => !open && setDetailGroup(null)}>
         <DialogContent className="flex max-h-[min(85vh,36rem)] max-w-[calc(100vw-2rem)] flex-col gap-4 p-4 sm:max-w-2xl sm:p-6" showCloseButton>
@@ -475,6 +468,6 @@ export default function AdvancedFinancePage() {
           )}
         </DialogContent>
       </Dialog>
-    </>
+    </main>
   )
 }

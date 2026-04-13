@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Navigation } from '@/components/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
@@ -103,24 +102,19 @@ export default function ComparaisonPage() {
 
   if (!ready) {
     return (
-      <>
-        <Navigation />
-        <main className="min-h-screen bg-background">
-          <div className="max-w-7xl mx-auto px-4 py-8">
-            <Skeleton className="h-10 w-72 mb-2" />
-            <Skeleton className="h-5 w-full max-w-xl mb-8" />
-            <Skeleton className="h-[420px] w-full" />
-          </div>
-        </main>
-      </>
+      <main className="min-h-screen bg-background">
+        <div className="mx-auto max-w-7xl px-4 py-8">
+          <Skeleton className="mb-2 h-10 w-72" />
+          <Skeleton className="mb-8 h-5 w-full max-w-xl" />
+          <Skeleton className="h-[420px] w-full" />
+        </div>
+      </main>
     )
   }
 
   return (
-    <>
-      <Navigation />
-      <main className="min-h-screen bg-background">
-        <div className="max-w-7xl mx-auto px-4 py-8">
+    <main className="min-h-screen bg-background">
+      <div className="mx-auto max-w-7xl px-4 py-8">
           <header className="mb-8">
             <div className="flex items-center gap-3">
               <div className="rounded-lg bg-primary/10 p-2">
@@ -369,7 +363,6 @@ export default function ComparaisonPage() {
           </footer>
         </div>
       </main>
-    </>
   )
 }
 

@@ -30,6 +30,19 @@
     "slashMonth": "/ month",
     "noData": "No data available"
   },
+  "siteFooter": {
+    "tagline": "Guides and simulator: editorial content and tooling built for Finance Pilot.",
+    "navTitle": "Navigation",
+    "infoTitle": "About the content",
+    "aboutEditorial": "Guides and information pages are written for Finance Pilot by the site author.",
+    "privacyLocal": "The figures you enter in the simulator stay on your device (local processing).",
+    "cookiesNote": "Anonymous audience metrics may be used to improve the site; we do not sell advertising profiles.",
+    "linkHome": "Home",
+    "linkSimulator": "Simulator",
+    "linkGuides": "Guides",
+    "copyright": "© {{year}} {{appName}}",
+    "rights": "All rights reserved."
+  },
   "navigation": {
     "data": "Data",
     "estimates": "Forecasts",
@@ -38,6 +51,15 @@
     "projects": "Projects",
     "newDraft": "New draft",
     "newDraftTitle": "Reset to starter example (~€2,000/month net)",
+    "home": "Home",
+    "guides": "Guides",
+    "openSimulator": "Open the simulator",
+    "jumpGuides": "Guides",
+    "jumpModules": "Tool modules",
+    "guide4Steps": "Four steps",
+    "guide7Strategies": "Seven strategies",
+    "guideBudget": "Budget & cash flow",
+    "guideWealth": "Budget & saving",
     "languageFr": "Français",
     "languageEn": "English",
     "moreMenu": "Menu",
@@ -50,54 +72,131 @@
     "themeDark": "Dark"
   },
   "homePage": {
-    "metaTitle": "Finance Pilot — household cash flow, savings, and wealth curves",
-    "metaDescription": "Model income and bills, track what you can invest each month, and chart how savings might grow over 10–30 years. Compare plans side by side—no account needed; math runs in your browser.",
+    "metaTitle": "Finance Pilot: household budget, cash flow and wealth simulator (local, free)",
+    "metaDescription": "Plan household money flows: data entry, monthly calendar, long-range charts and scenario compare. Educational guides plus a browser-based tool, no mandatory account.",
     "keywords": [
-      "household cash flow planner",
-      "savings growth chart",
-      "rental property budget tool",
-      "local-first personal finance",
-      "scenario comparison dashboard",
-      "long-horizon portfolio projection"
+      "personal budget simulator",
+      "cash flow forecast",
+      "local finance planner",
+      "savings scenario compare",
+      "monthly bills calendar",
+      "no-account finance tool"
     ],
     "schemaFeatureList": [
-      "Income, recurring bills, and sinking funds in one workspace",
+      "Site-written guides: steps, budgeting, wealth strategies",
+      "Income, bills, envelopes and investments in one workspace",
       "Month view for due dates and paid/not-paid tracking",
-      "Investment-style curves over 10–30 years from your inputs",
-      "Side-by-side draft vs saved named projects",
-      "Local JSON backup/import; data not uploaded by default"
+      "Projections over 10–30 years",
+      "Draft vs saved named projects; local JSON backup/import"
     ],
-    "heroTitle": "See your money further ahead—from this month to the next decades",
-    "heroLead": "Combine paychecks, subscriptions, sinking funds, rentals, and holdings in one model. Charts and comparisons help you stress-test choices without uploading balances to a cloud backend.",
-    "ctaPrimary": "Open data entry",
-    "ctaSecondary": "Monthly management",
-    "sectionsTitle": "Explore the modules",
+    "heroTitle": "See your budget and wealth path more clearly",
+    "heroLead": "Guides written for this site to frame your choices, then a simulator to run the numbers: flows, month by month, projections and comparisons—your data stays on your device.",
+    "ctaPrimary": "Open the simulator",
+    "ctaSecondary": "View the guides",
+    "sectionsTitle": "Tool modules",
     "privacyTitle": "Privacy and projects",
     "privacyText": "No account required. Save scenarios locally as named projects or export JSON. Switch the interface language (French or English) from the header.",
     "featureCards": [
       {
-        "href": "/donnees",
+        "href": "/simulateur/donnees",
         "title": "Data entry",
         "description": "Enter wages or variable pay, rent received, loan payments, sinking funds (travel, car), rentals, and holdings—the sheet updates cash you could still deploy."
       },
       {
-        "href": "/gestion-finances",
+        "href": "/simulateur/gestion-mensuel",
         "title": "Monthly management",
         "description": "A payment calendar, checkboxes when items clear, and a category split so you quickly spot drift from the plan."
       },
       {
-        "href": "/estimations",
+        "href": "/simulateur/estimations",
         "title": "Forecasts",
         "description": "Long-range curves from your assumed average return and contributions—useful to visualize discipline, not a guarantee of future performance."
       },
       {
-        "href": "/comparaison",
+        "href": "/simulateur/comparaison",
+        "title": "Compare",
+        "description": "Line up two versions (draft vs saved project): balances, flows, and savings curves to pick which strategy feels right."
+      }
+    ],
+    "guidesSectionLead": "Browse a guide below, then open the simulator to run the numbers—everything stays on this home page.",
+    "guideCards": [
+      {
+        "href": "/guides/finances-en-4-etapes",
+        "imageSrc": "/guides/cover-4-etapes.svg",
+        "imageAlt": "Illustration: four numbered steps",
+        "title": "Manage your money in four steps",
+        "description": "A simple frame: know your flows, set priorities, automate savings, and review every month."
+      },
+      {
+        "href": "/guides/7-strategies-gestion-argent",
+        "imageSrc": "/guides/cover-7-strategies.svg",
+        "imageAlt": "Illustration: connected ideas",
+        "title": "Seven money-management strategies",
+        "description": "A tour of common approaches (50/30/20, pay yourself first, FIRE, property…) and who they tend to fit."
+      },
+      {
+        "href": "/guides/quelle-strategie-pour-mon-profil",
+        "imageSrc": "/guides/cover-7-strategies.svg",
+        "imageAlt": "Illustration: short quiz path",
+        "title": "Which strategies fit your profile?",
+        "description": "Five questions: several guide sections may be suggested when scores stay close, with links to each (educational pointer only)."
+      },
+      {
+        "href": "/guides/budget-tresorerie",
+        "imageSrc": "/guides/cover-budget-tresorerie.svg",
+        "imageAlt": "Illustration: budget bars",
+        "title": "Monthly budget and cash flow",
+        "description": "Anticipate outflows, read your cash position, and avoid surprises with calendars and sinking funds."
+      },
+      {
+        "href": "/strategies-patrimoine",
+        "imageSrc": "/guides/cover-patrimoine.svg",
+        "imageAlt": "Illustration: budgeting, saving, and balance",
+        "title": "Budgeting and saving: practical methods",
+        "description": "50/30/20, automated savings, envelope budgeting, emergency funds, and debt payoff strategies—frame choices before you model them in the app."
+      }
+    ]
+  },
+  "simulateurPage": {
+    "heroTitle": "Finance Pilot simulator",
+    "heroLead": "Pick a module to enter your figures, track the current month, or compare assumptions.",
+    "backToHome": "Back to home",
+    "sectionsTitle": "Modules",
+    "featureCards": [
+      {
+        "href": "/simulateur/donnees",
+        "title": "Data entry",
+        "description": "Enter wages or variable pay, rent received, loan payments, sinking funds (travel, car), rentals, and holdings—the sheet updates cash you could still deploy."
+      },
+      {
+        "href": "/simulateur/gestion-mensuel",
+        "title": "Monthly management",
+        "description": "A payment calendar, checkboxes when items clear, and a category split so you quickly spot drift from the plan."
+      },
+      {
+        "href": "/simulateur/estimations",
+        "title": "Forecasts",
+        "description": "Long-range curves from your assumed average return and contributions—useful to visualize discipline, not a guarantee of future performance."
+      },
+      {
+        "href": "/simulateur/comparaison",
         "title": "Compare",
         "description": "Line up two versions (draft vs saved project): balances, flows, and savings curves to pick which strategy feels right."
       }
     ]
   },
   "seo": {
+    "simulateur": {
+      "title": "Open the simulator: data, monthly management, forecasts and compare",
+      "description": "Entry point to Finance Pilot modules: cash-flow inputs, monthly calendar, long-range curves and side-by-side analysis. Local-first in your browser.",
+      "keywords": [
+        "online budget simulator",
+        "personal finance tool hub",
+        "cash flow modules",
+        "savings projections",
+        "scenario comparison"
+      ]
+    },
     "donnees": {
       "title": "Income, bills, and holdings in one household cash-flow workspace",
       "description": "One screen for household inflows, rentals, and savings inputs—cash available to invest updates as you type. JSON backup stays in the browser; import restores a prior snapshot.",
@@ -140,6 +239,75 @@
         "hypothesis trade-off",
         "named saved snapshots",
         "headline metrics summary"
+      ]
+    },
+    "strategiesPatrimoine": {
+      "title": "Budgeting and saving: 50/30/20, envelopes, emergency fund, and debt payoff",
+      "description": "A practical household budgeting guide: the 50/30/20 rule, pay yourself first, envelope budgeting, emergency funds, debt snowball vs avalanche, and horizon goals—so you can frame choices before modelling them in Finance Pilot.",
+      "keywords": [
+        "household budgeting guide",
+        "50 30 20 budget rule",
+        "pay yourself first savings",
+        "envelope budgeting method",
+        "emergency fund months expenses",
+        "debt snowball avalanche payoff",
+        "savings goals by time horizon"
+      ]
+    },
+    "guides": {
+      "title": "Personal finance guides: budgeting, cash flow and methods",
+      "description": "Guides written for Finance Pilot to structure your money (steps, habits, monthly budgets), then test it with the local simulator, monthly management, and projections.",
+      "keywords": [
+        "personal finance guide",
+        "household budgeting tips",
+        "cash flow and savings",
+        "money management steps",
+        "online budget planner"
+      ]
+    },
+    "guidesFinances4Etapes": {
+      "title": "Manage your money in four steps: a simple, practical frame",
+      "description": "Four moves from fuzzy to planned: know your flows, set priorities, automate savings and review monthly—before you enter numbers in the simulator.",
+      "keywords": [
+        "four step budget",
+        "manage personal finances",
+        "income and spending plan",
+        "automate savings",
+        "monthly money check-in"
+      ]
+    },
+    "guidesSeptStrategies": {
+      "title": "Seven money-management strategies: levers and trade-offs",
+      "description": "A detailed Finance Pilot guide: 50/30/20, pay yourself first, FIRE, core/satellite portfolios, the “100 minus age” rule, property—fit by profile, pros, cons, and how to model it in the simulator.",
+      "keywords": [
+        "money management strategies",
+        "50 30 20 budgeting",
+        "pay yourself first savings",
+        "FIRE financial independence",
+        "core satellite portfolio",
+        "property rental investing"
+      ]
+    },
+    "guidesBudgetTresorerie": {
+      "title": "Monthly budget and cash flow: stay ahead of bills",
+      "description": "How to read cash flow, anticipate outflows and avoid overdrafts: bill calendars, sinking funds and useful indicators—linked to Data and Monthly management modules.",
+      "keywords": [
+        "monthly household budget",
+        "cash flow forecasting",
+        "fixed bill calendar",
+        "avoid bank overdraft",
+        "current account tracking"
+      ]
+    },
+    "guidesStrategieProfil": {
+      "title": "Which money-management strategies fit your profile?",
+      "description": "Five-question quiz scoring seven approaches from the strategies guide; several sections may be suggested when scores stay close, with links into the guide.",
+      "keywords": [
+        "budget strategy quiz",
+        "savings and investing profile",
+        "which budgeting method",
+        "50 30 20 who is it for",
+        "personal budget planner"
       ]
     }
   },

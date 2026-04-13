@@ -30,6 +30,19 @@
     "slashMonth": "/ mois",
     "noData": "Aucune donnée disponible"
   },
+  "siteFooter": {
+    "tagline": "Guides et simulateur : contenus rédigés et outil développés pour Finance Pilot.",
+    "navTitle": "Navigation",
+    "infoTitle": "À propos des contenus",
+    "aboutEditorial": "Les guides et pages d’information sont rédigés pour Finance Pilot par l’auteur du site.",
+    "privacyLocal": "Les données que vous saisissez dans le simulateur restent sur votre appareil (traitement local).",
+    "cookiesNote": "Une mesure d’audience anonymisée peut être utilisée pour améliorer le site ; aucun profil publicitaire n’est vendu.",
+    "linkHome": "Accueil",
+    "linkSimulator": "Simulateur",
+    "linkGuides": "Guides",
+    "copyright": "© {{year}} {{appName}}",
+    "rights": "Tous droits réservés."
+  },
   "navigation": {
     "data": "Données",
     "estimates": "Estimation",
@@ -38,6 +51,15 @@
     "projects": "Projets",
     "newDraft": "Nouveau brouillon",
     "newDraftTitle": "Réinitialiser sur l’exemple (~2 000 €/mois)",
+    "home": "Accueil",
+    "guides": "Guides",
+    "openSimulator": "Accéder au simulateur",
+    "jumpGuides": "Guides",
+    "jumpModules": "Les modules",
+    "guide4Steps": "4 étapes",
+    "guide7Strategies": "7 stratégies",
+    "guideBudget": "Budget & trésorerie",
+    "guideWealth": "Budget & épargne",
     "languageFr": "Français",
     "languageEn": "English",
     "moreMenu": "Menu",
@@ -50,54 +72,131 @@
     "themeDark": "Sombre"
   },
   "homePage": {
-    "metaTitle": "Finance Pilot — budget perso, trésorerie et projections patrimoine",
-    "metaDescription": "Anticipez rentrées et dépenses, pilotez l’épargne et visualisez l’évolution potentielle de vos placements sur 10 à 30 ans. Comparez des hypothèses côte à côte : aucun compte requis, calculs dans votre navigateur.",
+    "metaTitle": "Finance Pilot : simulateur de budget, trésorerie et patrimoine (local, gratuit)",
+    "metaDescription": "Anticipez l’argent du foyer : saisie des flux, calendrier mensuel, projections long terme et comparaison de scénarios. Guides pédagogiques et outil dans le navigateur, sans compte obligatoire.",
     "keywords": [
-      "budget personnel en ligne",
-      "prévision de trésorerie",
-      "projection épargne long terme",
-      "simulateur patrimoine navigateur",
-      "comparateur scénarios financiers",
-      "locatif et cash-flow intégrés"
+      "simulateur budget personnel",
+      "prévision trésorerie",
+      "gestion finances locales",
+      "comparateur scénarios épargne",
+      "calendrier charges mensuelles",
+      "outil finances sans compte"
     ],
     "schemaFeatureList": [
-      "Saisie des revenus, charges fixes et enveloppes budgétaires",
-      "Calendrier mensuel des échéances et du suivi des dépenses",
-      "Courbes d’investissement sur 10 à 30 ans à partir de vos hypothèses",
-      "Tableaux comparatifs entre brouillon et projets enregistrés",
-      "Traitement local des données, export et import JSON"
+      "Guides rédigés pour le site : étapes, budget, stratégies patrimoine",
+      "Saisie revenus, charges, enveloppes et placements",
+      "Calendrier mensuel des échéances et suivi",
+      "Projections sur 10 à 30 ans",
+      "Comparaison brouillon / projets sauvegardés, export JSON local"
     ],
-    "heroTitle": "Anticipez votre argent : du quotidien aux projections sur plusieurs années",
-    "heroLead": "Regroupez revenus, charges récurrentes, enveloppes dédiées, biens loués et supports d’épargne. Visualisez l’impact de vos choix avec des graphiques et des comparaisons, sans envoyer vos montants à un serveur distant.",
-    "ctaPrimary": "Ouvrir la saisie des données",
-    "ctaSecondary": "Gestion mensuelle",
-    "sectionsTitle": "Accéder aux modules",
+    "heroTitle": "Anticipez votre budget et votre patrimoine",
+    "heroLead": "Des guides rédigés sur ce site pour structurer vos choix, puis un simulateur pour les chiffrer : flux, mois par mois, projections et comparaisons — les données restent sur votre appareil.",
+    "ctaPrimary": "Accéder au simulateur",
+    "ctaSecondary": "Voir les guides",
+    "sectionsTitle": "Les modules de l’outil",
     "privacyTitle": "Confidentialité et projets",
     "privacyText": "Aucun compte obligatoire. Vos scénarios peuvent être enregistrés localement dans des projets nommés ou exportés en JSON. Changez de langue d’interface (français ou anglais) depuis l’en-tête.",
     "featureCards": [
       {
-        "href": "/donnees",
+        "href": "/simulateur/donnees",
         "title": "Saisie des données",
         "description": "Encodez salaires ou revenus variables, loyers encaissés, mensualités, enveloppes (vacances, véhicule), biens en location et supports : le tableau calcule ce qu’il reste à placer."
       },
       {
-        "href": "/gestion-finances",
+        "href": "/simulateur/gestion-mensuel",
         "title": "Gestion mensuelle",
         "description": "Calendrier des prélèvements, cases à cocher quand c’est payé et vue d’ensemble des postes pour repérer rapidement les écarts au plan."
       },
       {
-        "href": "/estimations",
+        "href": "/simulateur/estimations",
         "title": "Estimations",
         "description": "Courbes sur le long terme à partir de votre taux de rendement moyen et de vos versements, pour voir où une discipline d’épargne peut mener."
       },
       {
-        "href": "/comparaison",
+        "href": "/simulateur/comparaison",
+        "title": "Comparaison",
+        "description": "Alignez deux versions (brouillon contre projet sauvegardé) : soldes, flux et courbes d’épargne pour trancher entre plusieurs stratégies."
+      }
+    ],
+    "guidesSectionLead": "Parcourez une fiche ci-dessous, puis ouvrez le simulateur pour chiffrer vos hypothèses — tout reste sur cette page d’accueil.",
+    "guideCards": [
+      {
+        "href": "/guides/finances-en-4-etapes",
+        "imageSrc": "/guides/cover-4-etapes.svg",
+        "imageAlt": "Illustration : quatre étapes numérotées",
+        "title": "Bien gérer ses finances en 4 étapes",
+        "description": "Un cadre simple : connaître ses flux, fixer des priorités, automatiser l’épargne et ajuster chaque mois."
+      },
+      {
+        "href": "/guides/7-strategies-gestion-argent",
+        "imageSrc": "/guides/cover-7-strategies.svg",
+        "imageAlt": "Illustration : plusieurs pistes reliées",
+        "title": "7 stratégies de gestion d’argent",
+        "description": "Sept familles d’approches détaillées ici (50/30/20, épargne prioritaire, FIRE, immobilier…) : pour qui, avantages et limites."
+      },
+      {
+        "href": "/guides/quelle-strategie-pour-mon-profil",
+        "imageSrc": "/guides/cover-7-strategies.svg",
+        "imageAlt": "Illustration : questionnaire d’orientation",
+        "title": "Quelles stratégies pour votre profil ?",
+        "description": "Cinq questions : plusieurs rubriques du guide peuvent être proposées si les scores restent proches, avec liens vers chaque section (indication pédagogique)."
+      },
+      {
+        "href": "/guides/budget-tresorerie",
+        "imageSrc": "/guides/cover-budget-tresorerie.svg",
+        "imageAlt": "Illustration : barres de budget",
+        "title": "Budget mensuel et trésorerie",
+        "description": "Anticiper les sorties, lire sa trésorerie et éviter les mauvaises surprises grâce au calendrier et aux enveloppes."
+      },
+      {
+        "href": "/strategies-patrimoine",
+        "imageSrc": "/guides/cover-patrimoine.svg",
+        "imageAlt": "Illustration : budget, épargne et équilibre financier",
+        "title": "Budget et épargne : méthodes concrètes",
+        "description": "50-30-20, épargne automatique, enveloppes, fonds d’urgence et stratégies de remboursement de dettes pour cadrer vos choix avant le simulateur."
+      }
+    ]
+  },
+  "simulateurPage": {
+    "heroTitle": "Simulateur Finance Pilot",
+    "heroLead": "Choisissez un module pour saisir vos chiffres, suivre le mois en cours ou comparer des hypothèses.",
+    "backToHome": "Retour à l’accueil",
+    "sectionsTitle": "Modules",
+    "featureCards": [
+      {
+        "href": "/simulateur/donnees",
+        "title": "Saisie des données",
+        "description": "Encodez salaires ou revenus variables, loyers encaissés, mensualités, enveloppes (vacances, véhicule), biens en location et supports : le tableau calcule ce qu’il reste à placer."
+      },
+      {
+        "href": "/simulateur/gestion-mensuel",
+        "title": "Gestion mensuelle",
+        "description": "Calendrier des prélèvements, cases à cocher quand c’est payé et vue d’ensemble des postes pour repérer rapidement les écarts au plan."
+      },
+      {
+        "href": "/simulateur/estimations",
+        "title": "Estimations",
+        "description": "Courbes sur le long terme à partir de votre taux de rendement moyen et de vos versements, pour voir où une discipline d’épargne peut mener."
+      },
+      {
+        "href": "/simulateur/comparaison",
         "title": "Comparaison",
         "description": "Alignez deux versions (brouillon contre projet sauvegardé) : soldes, flux et courbes d’épargne pour trancher entre plusieurs stratégies."
       }
     ]
   },
   "seo": {
+    "simulateur": {
+      "title": "Accéder au simulateur : données, gestion mensuelle, projections et comparaison",
+      "description": "Point d’entrée vers les modules Finance Pilot : saisie des flux, calendrier mensuel, courbes long terme et analyse comparative. Données locales dans le navigateur.",
+      "keywords": [
+        "simulateur budget en ligne",
+        "entrée outil finances",
+        "modules trésorerie",
+        "prévisions épargne",
+        "comparaison scénarios"
+      ]
+    },
     "donnees": {
       "title": "Saisie revenus, charges et patrimoine pour votre tableau de trésorerie",
       "description": "Un seul écran pour les flux du foyer, le locatif et les supports d’épargne : le disponible à investir se met à jour au fil des saisies. Export JSON sur votre appareil, import pour restaurer une copie.",
@@ -140,6 +239,75 @@
         "arbitrage entre hypothèses",
         "projets nommés sauvegardés",
         "synthèse indicateurs clés"
+      ]
+    },
+    "strategiesPatrimoine": {
+      "title": "Budget et épargne : 50-30-20, enveloppes, fonds d’urgence et dettes",
+      "description": "Guide du budget familial et de l’épargne : règle 50-30-20, pay yourself first, enveloppes budgétaires, fonds d’urgence, remboursement de dettes (boule de neige ou avalanche) et objectifs par horizon — pour cadrer vos choix avant de les chiffrer dans Finance Pilot.",
+      "keywords": [
+        "guide budget personnel",
+        "règle 50 30 20 budget",
+        "épargne automatique pay yourself first",
+        "méthode enveloppes épargne",
+        "fonds d’urgence mois de charges",
+        "rembourser dettes boule de neige avalanche",
+        "objectifs épargne par horizon"
+      ]
+    },
+    "guides": {
+      "title": "Guides finances personnelles : budget, trésorerie et méthodes",
+      "description": "Guides rédigés pour Finance Pilot afin de structurer vos finances (étapes, habitudes, budget mensuel), puis les tester avec le simulateur local, la gestion mensuelle et les projections.",
+      "keywords": [
+        "guide budget personnel",
+        "gérer finances maison",
+        "trésorerie et épargne",
+        "méthode finances étapes",
+        "simulateur budget en ligne"
+      ]
+    },
+    "guidesFinances4Etapes": {
+      "title": "Bien gérer ses finances en 4 étapes : cadre simple et efficace",
+      "description": "Quatre étapes pour passer du flou à un plan : connaître ses flux, fixer des priorités, automatiser l’épargne et ajuster chaque mois — avant de les saisir dans votre simulateur.",
+      "keywords": [
+        "finances 4 étapes",
+        "bien gérer son budget",
+        "planifier revenus et dépenses",
+        "épargne automatique",
+        "suivi mensuel argent"
+      ]
+    },
+    "guidesSeptStrategies": {
+      "title": "7 stratégies de gestion d’argent : leviers et arbitrages",
+      "description": "Analyse détaillée pour Finance Pilot : 50/30/20, épargne prioritaire, FIRE, portefeuille cœur/satellite, règle des 100, immobilier — intérêt selon le profil, avantages, limites et lien avec le simulateur.",
+      "keywords": [
+        "stratégies gestion argent",
+        "règle 50 30 20 budget",
+        "épargne automatique pay yourself first",
+        "FIRE indépendance financière",
+        "investissement immobilier locatif",
+        "allocation portefeuille core satellite"
+      ]
+    },
+    "guidesBudgetTresorerie": {
+      "title": "Budget mensuel et trésorerie : anticiper et garder la maîtrise",
+      "description": "Comment lire sa trésorerie, anticiper les sorties et éviter le découvert : calendrier des charges, enveloppes et indicateurs utiles, reliés aux modules Données et Gestion mensuelle.",
+      "keywords": [
+        "budget mensuel personnel",
+        "trésorerie prévisionnelle",
+        "anticiper dépenses fixes",
+        "éviter découvert bancaire",
+        "suivi compte courant"
+      ]
+    },
+    "guidesStrategieProfil": {
+      "title": "Quelles stratégies de gestion d’argent pour votre profil ?",
+      "description": "Questionnaire en cinq questions : scores sur les sept familles d’approches du guide ; plusieurs rubriques peuvent être proposées si les scores restent proches, avec liens vers les sections du guide.",
+      "keywords": [
+        "questionnaire stratégie budget",
+        "profil épargne investissement",
+        "quelle méthode gestion argent",
+        "règle 50 30 20 pour qui",
+        "simulateur budget personnel"
       ]
     }
   },

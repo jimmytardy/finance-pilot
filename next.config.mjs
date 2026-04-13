@@ -23,6 +23,15 @@ const nextConfig = {
       },
     ]
   },
+  async redirects() {
+    return [
+      { source: '/donnees', destination: '/simulateur/donnees', permanent: true },
+      { source: '/gestion-finances', destination: '/simulateur/gestion-mensuel', permanent: true },
+      { source: '/estimations', destination: '/simulateur/estimations', permanent: true },
+      { source: '/comparaison', destination: '/simulateur/comparaison', permanent: true },
+      { source: '/guides', destination: '/#guides', permanent: true },
+    ]
+  },
 }
 
 export default nextConfig

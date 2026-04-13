@@ -6,9 +6,9 @@ import { buildRouteMetadata } from '@/lib/seo-metadata'
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = resolveHomeLocale((await headers()).get('accept-language'))
-  return buildRouteMetadata(locale, 'donnees')
+  return buildRouteMetadata(locale, 'comparaison')
 }
 
-export default function DonneesLayout({ children }: { children: ReactNode }) {
+export default function SimulateurComparaisonLayout({ children }: { children: ReactNode }) {
   return children
 }

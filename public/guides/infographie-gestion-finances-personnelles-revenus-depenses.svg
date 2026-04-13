@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 300" role="img" aria-labelledby="tinf">
+  <title id="tinf">Gestion finances personnelles : �quilibre entre revenus, charges et �pargne</title>
+  <rect width="800" height="300" fill="#fafafa"/>
+  <text x="400" y="38" text-anchor="middle" font-family="system-ui,sans-serif" font-size="18" font-weight="700" fill="#0f172a">�quilibre budget foyer</text>
+  <rect x="60" y="80" width="200" height="120" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+  <text x="160" y="130" text-anchor="middle" font-family="system-ui,sans-serif" font-size="15" font-weight="700" fill="#14532d">Revenus</text>
+  <text x="160" y="158" text-anchor="middle" font-family="system-ui,sans-serif" font-size="12" fill="#166534">salaires, loyers&</text>
+  <rect x="300" y="80" width="200" height="120" rx="10" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+  <text x="400" y="130" text-anchor="middle" font-family="system-ui,sans-serif" font-size="15" font-weight="700" fill="#7f1d1d">Charges</text>
+  <text x="400" y="158" text-anchor="middle" font-family="system-ui,sans-serif" font-size="12" fill="#991b1b">fixes + variables</text>
+  <rect x="540" y="80" width="200" height="120" rx="10" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+  <text x="640" y="130" text-anchor="middle" font-family="system-ui,sans-serif" font-size="15" font-weight="700" fill="#1e3a8a">�pargne</text>
+  <text x="640" y="158" text-anchor="middle" font-family="system-ui,sans-serif" font-size="12" fill="#1d4ed8">pr�caution &amp; projets</text>
+  <path d="M260 140 L300 140" stroke="#64748b" stroke-width="3"/>
+  <path d="M500 140 L540 140" stroke="#64748b" stroke-width="3"/>
+  <text x="400" y="250" text-anchor="middle" font-family="system-ui,sans-serif" font-size="12" fill="#64748b">Tr�sorerie personnelle  rep�res p�dagogiques</text>
+</svg>

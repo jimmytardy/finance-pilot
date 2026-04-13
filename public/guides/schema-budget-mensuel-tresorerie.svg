@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 280" fill="none" role="img" aria-hidden="true">
+  <rect width="800" height="280" fill="#ffffff"/>
+  <rect x="24" y="24" width="752" height="232" rx="12" stroke="#e2e8f0" stroke-width="2" fill="#fafafa"/>
+  <g font-family="system-ui,sans-serif" font-size="13" fill="#64748b">
+    <text x="100" y="56">S1</text>
+    <text x="260" y="56">S2</text>
+    <text x="420" y="56">S3</text>
+    <text x="580" y="56">S4</text>
+  </g>
+  <rect x="70" y="80" width="120" height="36" rx="4" fill="#bbf7d0"/>
+  <rect x="230" y="120" width="120" height="36" rx="4" fill="#fecaca"/>
+  <rect x="390" y="100" width="120" height="36" rx="4" fill="#fecaca"/>
+  <rect x="550" y="140" width="120" height="36" rx="4" fill="#fecaca"/>
+  <rect x="70" y="160" width="120" height="36" rx="4" fill="#bbf7d0"/>
+  <path d="M40 210h720" stroke="#e2e8f0" stroke-width="2"/>
+  <text x="400" y="248" text-anchor="middle" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="13">Entr�es / sorties sur le mois</text>
+</svg>

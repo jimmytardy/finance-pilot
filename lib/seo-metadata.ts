@@ -20,10 +20,16 @@ export function metadataBaseFromEnv(): URL | undefined {
 }
 
 const ROUTE_PATHS = {
-  donnees: '/donnees',
-  gestionFinances: '/gestion-finances',
-  estimations: '/estimations',
-  comparaison: '/comparaison',
+  simulateur: '/simulateur',
+  donnees: '/simulateur/donnees',
+  gestionFinances: '/simulateur/gestion-mensuel',
+  estimations: '/simulateur/estimations',
+  comparaison: '/simulateur/comparaison',
+  strategiesPatrimoine: '/strategies-patrimoine',
+  guidesFinances4Etapes: '/guides/finances-en-4-etapes',
+  guidesSeptStrategies: '/guides/7-strategies-gestion-argent',
+  guidesBudgetTresorerie: '/guides/budget-tresorerie',
+  guidesStrategieProfil: '/guides/quelle-strategie-pour-mon-profil',
 } as const
 
 export type RouteSeoKey = keyof typeof ROUTE_PATHS

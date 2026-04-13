@@ -2,9 +2,11 @@ import type { Metadata } from 'next'
 import { headers } from 'next/headers'
 import fr from '@/locales/fr.json'
 import en from '@/locales/en.json'
-import { resolveHomeLocale } from '@/lib/resolve-home-locale'
 import { LandingPage } from '@/components/landing-page'
-import { metadataBaseFromEnv } from '@/lib/seo-metadata'
+import { buildGuidesHubJsonLd } from '@/lib/guide-jsonld'
+import { guidesHubCopy } from '@/lib/i18n/guides/hub'
+import { resolveHomeLocale } from '@/lib/resolve-home-locale'
+import { metadataBaseFromEnv, messagesForLocale } from '@/lib/seo-metadata'
 
 export async function generateMetadata(): Promise<Metadata> {
   const headersList = await headers()
@@ -40,22 +42,46 @@ export default async function HomePage() {
   const locale = resolveHomeLocale(headersList.get('accept-language'))
   const metadataBase = metadataBaseFromEnv()
   const copy = locale === 'en' ? en.homePage : fr.homePage
+  const messages = messagesForLocale(locale)
+  const hub = guidesHubCopy(locale)
   const appUrl = metadataBase?.origin
+  const pageUrl = metadataBase ? new URL('/', metadataBase).toString() : undefined
+
+  const guidesCollectionRaw = buildGuidesHubJsonLd({
+    locale,
+    seo: messages.seo.guides,
+    appName: messages.meta.appName,
+    partUrls: hub.cards.map((c) => ({ name: c.title, path: c.href })),
+  })
+  const { ['@context']: _guidesContext, ...guidesCollectionNode } = guidesCollectionRaw
 
   const jsonLd = {
     '@context': 'https://schema.org',
-    '@type': 'WebApplication',
-    name: 'Finance Pilot',
-    applicationCategory: 'FinanceApplication',
-    operatingSystem: 'Web browser',
-    description: copy.metaDescription,
-    featureList: copy.schemaFeatureList,
-    ...(appUrl
-      ? {
-          url: appUrl,
-          offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' },
-        }
-      : {}),
+    '@graph': [
+      {
+        '@type': 'WebApplication',
+        name: 'Finance Pilot',
+        applicationCategory: 'FinanceApplication',
+        operatingSystem: 'Web browser',
+        description: copy.metaDescription,
+        featureList: copy.schemaFeatureList,
+        ...(appUrl
+          ? {
+              url: appUrl,
+              offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' },
+            }
+          : {}),
+      },
+      {
+        '@type': 'WebPage',
+        name: copy.heroTitle,
+        description: copy.metaDescription,
+        inLanguage: locale === 'en' ? 'en-GB' : 'fr-FR',
+        ...(pageUrl ? { url: pageUrl, isPartOf: { '@type': 'WebSite', name: 'Finance Pilot', url: appUrl } } : {}),
+        keywords: copy.keywords.join(', '),
+      },
+      guidesCollectionNode,
+    ],
   }
 
   return (

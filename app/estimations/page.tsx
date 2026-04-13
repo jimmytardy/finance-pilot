@@ -3,7 +3,6 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFinanceData } from '@/hooks/use-finance-data'
-import { Navigation } from '@/components/navigation'
 import { SummaryCard } from '@/components/dashboard/summary-card'
 import { BreakdownChart } from '@/components/dashboard/breakdown-chart'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -151,35 +150,30 @@ export default function EstimationsPage() {
 
   if (!isLoaded) {
     return (
-      <>
-        <Navigation />
-        <main className="min-h-screen bg-background">
-          <div className="max-w-7xl mx-auto px-4 py-8">
-            <div className="mb-8">
-              <Skeleton className="h-10 w-64 mb-2" />
-              <Skeleton className="h-5 w-96" />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-              {[1, 2, 3, 4].map((i) => (
-                <Skeleton key={i} className="h-32" />
-              ))}
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {[1, 2, 3, 4].map((i) => (
-                <Skeleton key={i} className="h-80" />
-              ))}
-            </div>
+      <main className="min-h-screen bg-background">
+        <div className="mx-auto max-w-7xl px-4 py-8">
+          <div className="mb-8">
+            <Skeleton className="mb-2 h-10 w-64" />
+            <Skeleton className="h-5 w-96" />
           </div>
-        </main>
-      </>
+          <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-32" />
+            ))}
+          </div>
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-80" />
+            ))}
+          </div>
+        </div>
+      </main>
     )
   }
 
   return (
-    <>
-      <Navigation />
-      <main className="min-h-screen bg-background">
-        <div className="max-w-7xl mx-auto px-4 py-8">
+    <main className="min-h-screen bg-background">
+      <div className="mx-auto max-w-7xl px-4 py-8">
           <header className="mb-8">
             <h1 className="text-3xl font-bold text-balance">{t('estimations.title')}</h1>
             <p className="text-muted-foreground mt-1">{t('estimations.subtitle')}</p>
@@ -459,6 +453,5 @@ export default function EstimationsPage() {
           </footer>
         </div>
       </main>
-    </>
   )
 }
