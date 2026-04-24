@@ -3,6 +3,7 @@ import { ArrowLeft } from 'lucide-react'
 import type { AppLocale } from '@/lib/seo-metadata'
 import type { GuideArticleBody } from '@/lib/i18n/guides/article-types'
 import { guidesChromeCopy } from '@/lib/i18n/guides/chrome'
+import { JsonLd } from '@/components/seo/json-ld'
 
 type GuideArticleProps = {
   locale: AppLocale
@@ -14,7 +15,7 @@ export function GuideArticle({ locale, body, jsonLd }: GuideArticleProps) {
   const c = guidesChromeCopy(locale)
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <JsonLd data={jsonLd} />
       <main className="min-h-screen bg-background">
         <article className="mx-auto max-w-3xl px-4 py-10 sm:py-12">
           <header className="border-b border-border pb-8">

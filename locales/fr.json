@@ -1,7 +1,7 @@
 {
   "meta": {
     "appName": "Finance Pilot",
-    "appDescription": "Application web pour anticiper l’argent du foyer : flux, épargne, locatif et placements, avec graphiques et comparatifs. Gratuit, sans compte obligatoire, traitement des chiffres sur votre appareil.",
+    "appDescription": "Application web pour anticiper l’argent du foyer : flux, épargne, locatif et placements, avec graphiques et comparatifs. Gratuit ; connexion Google optionnelle pour sauvegarder vos scénarios sur le serveur.",
     "siteKeywords": [
       "budget personnel en ligne",
       "prévision de trésorerie",
@@ -35,7 +35,7 @@
     "navTitle": "Navigation",
     "infoTitle": "À propos des contenus",
     "aboutEditorial": "Les guides et pages d’information sont rédigés pour Finance Pilot par l’auteur du site.",
-    "privacyLocal": "Les données que vous saisissez dans le simulateur restent sur votre appareil (traitement local).",
+    "privacyLocal": "Connecté avec Google, vos scénarios du simulateur sont enregistrés sur nos serveurs ; sans connexion, les données restent dans la session du navigateur jusqu’à fermeture.",
     "cookiesNote": "Une mesure d’audience anonymisée peut être utilisée pour améliorer le site ; aucun profil publicitaire n’est vendu.",
     "linkHome": "Accueil",
     "linkSimulator": "Simulateur",
@@ -63,6 +63,7 @@
     "languageFr": "Français",
     "languageEn": "English",
     "moreMenu": "Menu",
+    "accountMenu": "Menu compte",
     "languageChoice": "Langue de l’interface",
     "languageToggle": "Basculer vers {{lang}}",
     "themeChoice": "Thème d’affichage",
@@ -70,6 +71,15 @@
     "themeSystem": "Système",
     "themeLight": "Clair",
     "themeDark": "Sombre"
+  },
+  "auth": {
+    "sessionLoading": "Session…",
+    "signInGoogle": "Connexion Google",
+    "signOut": "Déconnexion",
+    "bannerGuestTitle": "Simulateur sans compte",
+    "bannerGuestDescription": "Vous pouvez saisir et modifier vos données librement. Pour enregistrer vos scénarios, projets nommés et suivi mensuel sur le serveur, connectez-vous avec Google.",
+    "bannerSynced": "Vos données simulateur sont enregistrées sur le compte connecté (synchronisation automatique).",
+    "bannerBackendDisabled": "La sauvegarde cloud n’est pas activée sur ce déploiement (variables OAuth / base de données manquantes). Le simulateur reste utilisable en session navigateur."
   },
   "homePage": {
     "metaTitle": "Finance Pilot : simulateur de budget, trésorerie et patrimoine (local, gratuit)",
@@ -95,7 +105,7 @@
     "ctaSecondary": "Voir les guides",
     "sectionsTitle": "Les modules de l’outil",
     "privacyTitle": "Confidentialité et projets",
-    "privacyText": "Aucun compte obligatoire. Vos scénarios peuvent être enregistrés localement dans des projets nommés ou exportés en JSON. Changez de langue d’interface (français ou anglais) depuis l’en-tête.",
+    "privacyText": "Sans compte, le simulateur fonctionne en session navigateur. Avec Google, vos projets nommés et le calendrier sont sauvegardés sur nos serveurs. Export / import JSON toujours disponible. Langue d’interface (français ou anglais) dans l’en-tête.",
     "featureCards": [
       {
         "href": "/simulateur/donnees",
@@ -323,12 +333,15 @@
     "activeBadge": "Actif",
     "autoSaveActive": "Enregistrement auto dans « {{name}} »",
     "autoSaveDraft": "Brouillon : chargez un projet pour lier les changements à un enregistrement nommé.",
+    "draftSessionOnly": "Brouillon de session : les changements ne sont pas enregistrés sur le serveur tant que vous n’êtes pas connecté.",
+    "loginToSaveHint": "La connexion Google est nécessaire pour créer des projets nommés et les enregistrer en base.",
+    "oauthNotConfigured": "Google OAuth n’est pas configuré (variables serveur ou identifiant public manquant) : la sauvegarde cloud n’est pas disponible pour l’instant.",
     "confirmDelete": "Supprimer le projet « {{name}} » ?"
   },
   "dataPage": {
     "title": "Saisie des données",
     "subtitle": "Configurez vos revenus, vos dépenses, vos biens locatifs et vos investissements.",
-    "footer": "Les données sont stockées localement sur votre appareil. Utilisez « Projets » dans la barre du haut pour sauvegarder ou charger des scénarios nommés. Export / import JSON ci-dessous."
+    "footer": "Sans compte, le brouillon vit dans la session du navigateur. Connectez-vous avec Google pour enregistrer sur le serveur via « Projets ». Export / import JSON ci-dessous."
   },
   "dataJson": {
     "export": "Exporter JSON",

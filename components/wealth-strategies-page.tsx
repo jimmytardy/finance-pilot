@@ -1,3 +1,5 @@
+'use client'
+
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import type { AppLocale } from '@/lib/seo-metadata'
@@ -20,7 +22,6 @@ export function WealthStrategiesPage({ locale, jsonLd }: WealthStrategiesPagePro
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <Navigation />
       <main className="min-h-screen bg-background">
         <article className="mx-auto max-w-3xl px-4 py-10 sm:py-14">

@@ -3,6 +3,7 @@ import { ArrowLeft } from 'lucide-react'
 import type { AppLocale } from '@/lib/seo-metadata'
 import type { SevenStrategiesCopy } from '@/lib/i18n/guides/sept-strategies-argent'
 import { guidesChromeCopy } from '@/lib/i18n/guides/chrome'
+import { JsonLd } from '@/components/seo/json-ld'
 
 type SevenStrategiesArticleProps = {
   locale: AppLocale
@@ -16,7 +17,7 @@ export function SevenStrategiesArticle({ locale, copy, jsonLd }: SevenStrategies
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <JsonLd data={jsonLd} />
       <main className="min-h-screen bg-background">
         <article className="mx-auto max-w-3xl px-4 py-10 sm:py-12">
           <header className="border-b border-border pb-8">

@@ -3,6 +3,7 @@ import { headers } from 'next/headers'
 import fr from '@/locales/fr.json'
 import en from '@/locales/en.json'
 import { LandingPage } from '@/components/landing-page'
+import { JsonLd } from '@/components/seo/json-ld'
 import { buildGuidesHubJsonLd } from '@/lib/guide-jsonld'
 import { guidesHubCopy } from '@/lib/i18n/guides/hub'
 import { resolveHomeLocale } from '@/lib/resolve-home-locale'
@@ -86,10 +87,7 @@ export default async function HomePage() {
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
+      <JsonLd data={jsonLd} />
       <LandingPage locale={locale} />
     </>
   )

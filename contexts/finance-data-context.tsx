@@ -1,14 +1,6 @@
 'use client'
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from 'react'
+import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react'
 import type {
   AnnexBudget,
   FinanceData,
@@ -20,11 +12,9 @@ import type {
 import { normalizeFinanceData } from '@/lib/normalize-finance-data'
 import { getFinanceMetrics } from '@/lib/finance-metrics'
 import { computeRentalNetMonthly } from '@/lib/rental-net'
-import i18n, { readStoredLocale } from '@/lib/i18n/i18n'
-import { getLocalizedExampleFinanceData, matchesBuiltInExample } from '@/lib/example-finance-localized'
-
-const STORAGE_KEY = 'finance-pilot-data'
-const LEGACY_FINANCE_STORAGE_KEY = 'finance-dashboard-data'
+import i18n from '@/lib/i18n/i18n'
+import { getLocalizedExampleFinanceData } from '@/lib/example-finance-localized'
+import { useSimulatorWorkspace } from '@/contexts/simulator-workspace-context'
 
 type FinanceDataContextValue = {
   data: FinanceData
@@ -60,158 +50,110 @@ type FinanceDataContextValue = {
 const FinanceDataContext = createContext<FinanceDataContextValue | null>(null)
 
 export function FinanceDataProvider({ children }: { children: ReactNode }) {
-  const [data, setData] = useState<FinanceData>(() =>
-    structuredClone(getLocalizedExampleFinanceData('fr')),
-  )
-  const [isLoaded, setIsLoaded] = useState(false)
-
-  useEffect(() => {
-    try {
-      let stored = localStorage.getItem(STORAGE_KEY)
-      if (!stored) {
-        const legacy = localStorage.getItem(LEGACY_FINANCE_STORAGE_KEY)
-        if (legacy) {
-          stored = legacy
-          localStorage.setItem(STORAGE_KEY, legacy)
-          localStorage.removeItem(LEGACY_FINANCE_STORAGE_KEY)
-        }
-      }
-      if (stored) {
-        setData(normalizeFinanceData(JSON.parse(stored)))
-      } else {
-        setData(structuredClone(getLocalizedExampleFinanceData(readStoredLocale())))
-      }
-    } catch (error) {
-      console.error('Error loading finance data:', error)
-    }
-    setIsLoaded(true)
-  }, [])
-
-  useEffect(() => {
-    if (isLoaded) {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
-      } catch (error) {
-        console.error('Error saving finance data:', error)
-      }
-    }
-  }, [data, isLoaded])
+  const { financeData: data, financeLoaded: isLoaded, setFinanceData: setData } = useSimulatorWorkspace()
 
   const importFinanceData = useCallback((next: FinanceData) => {
     setData(normalizeFinanceData(next))
-  }, [])
+  }, [setData])
 
   const startNewDraft = useCallback(() => {
     setData(structuredClone(getLocalizedExampleFinanceData(i18n.language)))
-  }, [])
-
-  useEffect(() => {
-    const onLang = (lng: string) => {
-      setData((prev) => {
-        if (!matchesBuiltInExample(prev)) return prev
-        return structuredClone(getLocalizedExampleFinanceData(lng))
-      })
-    }
-    i18n.on('languageChanged', onLang)
-    return () => {
-      i18n.off('languageChanged', onLang)
-    }
-  }, [])
+  }, [setData])
 
   const addRevenue = useCallback((revenue: Omit<Revenue, 'id'>) => {
     const newRevenue: Revenue = { ...revenue, id: crypto.randomUUID() }
     setData((prev) => ({ ...prev, revenues: [...prev.revenues, newRevenue] }))
-  }, [])
+  }, [setData])
 
   const updateRevenue = useCallback((id: string, updates: Partial<Revenue>) => {
     setData((prev) => ({
       ...prev,
       revenues: prev.revenues.map((r) => (r.id === id ? { ...r, ...updates } : r)),
     }))
-  }, [])
+  }, [setData])
 
   const deleteRevenue = useCallback((id: string) => {
     setData((prev) => ({
       ...prev,
       revenues: prev.revenues.filter((r) => r.id !== id),
     }))
-  }, [])
+  }, [setData])
 
   const addFixedExpense = useCallback((expense: Omit<FixedExpense, 'id'>) => {
     const newExpense: FixedExpense = { ...expense, id: crypto.randomUUID() }
     setData((prev) => ({ ...prev, fixedExpenses: [...prev.fixedExpenses, newExpense] }))
-  }, [])
+  }, [setData])
 
   const updateFixedExpense = useCallback((id: string, updates: Partial<FixedExpense>) => {
     setData((prev) => ({
       ...prev,
       fixedExpenses: prev.fixedExpenses.map((e) => (e.id === id ? { ...e, ...updates } : e)),
     }))
-  }, [])
+  }, [setData])
 
   const deleteFixedExpense = useCallback((id: string) => {
     setData((prev) => ({
       ...prev,
       fixedExpenses: prev.fixedExpenses.filter((e) => e.id !== id),
     }))
-  }, [])
+  }, [setData])
 
   const addAnnexBudget = useCallback((budget: Omit<AnnexBudget, 'id'>) => {
     const newBudget: AnnexBudget = { ...budget, id: crypto.randomUUID() }
     setData((prev) => ({ ...prev, annexBudgets: [...prev.annexBudgets, newBudget] }))
-  }, [])
+  }, [setData])
 
   const updateAnnexBudget = useCallback((id: string, updates: Partial<AnnexBudget>) => {
     setData((prev) => ({
       ...prev,
       annexBudgets: prev.annexBudgets.map((b) => (b.id === id ? { ...b, ...updates } : b)),
     }))
-  }, [])
+  }, [setData])
 
   const deleteAnnexBudget = useCallback((id: string) => {
     setData((prev) => ({
       ...prev,
       annexBudgets: prev.annexBudgets.filter((b) => b.id !== id),
     }))
-  }, [])
+  }, [setData])
 
   const addRentalProperty = useCallback((property: Omit<RentalProperty, 'id'>) => {
     const newProperty: RentalProperty = { ...property, id: crypto.randomUUID() }
     setData((prev) => ({ ...prev, rentalProperties: [...prev.rentalProperties, newProperty] }))
-  }, [])
+  }, [setData])
 
   const updateRentalProperty = useCallback((id: string, updates: Partial<RentalProperty>) => {
     setData((prev) => ({
       ...prev,
       rentalProperties: prev.rentalProperties.map((p) => (p.id === id ? { ...p, ...updates } : p)),
     }))
-  }, [])
+  }, [setData])
 
   const deleteRentalProperty = useCallback((id: string) => {
     setData((prev) => ({
       ...prev,
       rentalProperties: prev.rentalProperties.filter((p) => p.id !== id),
     }))
-  }, [])
+  }, [setData])
 
   const addInvestment = useCallback((investment: Omit<Investment, 'id'>) => {
     const newInvestment: Investment = { ...investment, id: crypto.randomUUID() }
     setData((prev) => ({ ...prev, investments: [...prev.investments, newInvestment] }))
-  }, [])
+  }, [setData])
 
   const updateInvestment = useCallback((id: string, updates: Partial<Investment>) => {
     setData((prev) => ({
       ...prev,
       investments: prev.investments.map((i) => (i.id === id ? { ...i, ...updates } : i)),
     }))
-  }, [])
+  }, [setData])
 
   const deleteInvestment = useCallback((id: string) => {
     setData((prev) => ({
       ...prev,
       investments: prev.investments.filter((i) => i.id !== id),
     }))
-  }, [])
+  }, [setData])
 
   const calculateRentalNetResult = useCallback((property: RentalProperty) => {
     return computeRentalNetMonthly(property)

@@ -1,3 +1,5 @@
 'use client'
 
-export { default } from '../../comparaison/page'
+import ComparaisonPage from '../../comparaison/page'
+
+export default ComparaisonPage

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { signIn } from 'next-auth/react'
 import { useTranslation } from 'react-i18next'
 import { useFinanceData } from '@/hooks/use-finance-data'
 import { useSavedProjects } from '@/hooks/use-saved-projects'
@@ -9,7 +10,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { FilePlus2, FolderOpen, Loader2, Save, Trash2, Upload } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { FilePlus2, FolderOpen, Loader2, Lock, Save, Trash2, Upload } from 'lucide-react'
 import { isFinanceDataEmpty } from '@/lib/finance-defaults'
 import i18n from '@/lib/i18n/i18n'
 import { getLocalizedExampleFinanceData } from '@/lib/example-finance-localized'
@@ -40,6 +42,8 @@ export function SavedProjectsMenu() {
     addProject,
     updateProjectSnapshot,
     removeProject,
+    persistenceRemote,
+    googleAuthConfigured,
   } = useSavedProjects()
 
   const [open, setOpen] = useState(false)
@@ -57,7 +61,7 @@ export function SavedProjectsMenu() {
   const activeProject = activeProjectId ? projects.find((p) => p.id === activeProjectId) : undefined
 
   useEffect(() => {
-    if (!financeLoaded || !projectsLoaded || !activeProjectId) return
+    if (!persistenceRemote || !financeLoaded || !projectsLoaded || !activeProjectId) return
 
     const timer = window.setTimeout(() => {
       const id = activeIdRef.current
@@ -78,9 +82,10 @@ export function SavedProjectsMenu() {
     }, AUTO_SAVE_MS)
 
     return () => window.clearTimeout(timer)
-  }, [data, activeProjectId, financeLoaded, projectsLoaded, setActiveProjectId, updateProjectSnapshot])
+  }, [data, activeProjectId, financeLoaded, projectsLoaded, persistenceRemote, setActiveProjectId, updateProjectSnapshot])
 
   const handleSaveNew = () => {
+    if (!persistenceRemote) return
     const name = newName.trim()
     if (!name) return
     const snapshot = isFinanceDataEmpty(data)
@@ -110,6 +115,7 @@ export function SavedProjectsMenu() {
    * avant de charger un autre projet ou de réinitialiser.
    */
   const persistOrphanDraftIfNeeded = () => {
+    if (!persistenceRemote) return
     if (activeProjectId != null) return
     if (!financeLoaded || !projectsLoaded) return
     if (isFinanceDataEmpty(data)) return
@@ -157,13 +163,37 @@ export function SavedProjectsMenu() {
         collisionPadding={12}
         className="flex max-h-[min(85dvh,28rem)] min-h-0 w-[min(100vw-2rem,22rem)] flex-col overflow-hidden p-0"
       >
+        {!googleAuthConfigured ? (
+          <div className="shrink-0 border-b border-border p-3">
+            <Alert className="border-muted-foreground/30 bg-muted/40">
+              <AlertDescription className="text-xs leading-relaxed">{t('savedProjects.oauthNotConfigured')}</AlertDescription>
+            </Alert>
+          </div>
+        ) : null}
+
+        {!persistenceRemote && googleAuthConfigured ? (
+          <div className="shrink-0 border-b border-border p-3">
+            <Alert className="border-primary/25 bg-primary/5">
+              <Lock className="size-4 text-primary" aria-hidden />
+              <AlertDescription className="flex flex-col gap-2 text-xs leading-relaxed">
+                <span>{t('savedProjects.loginToSaveHint')}</span>
+                <Button type="button" size="sm" className="w-full gap-2 sm:w-auto" onClick={() => void signIn('google')}>
+                  {t('auth.signInGoogle')}
+                </Button>
+              </AlertDescription>
+            </Alert>
+          </div>
+        ) : null}
+
         <div className="shrink-0 border-b border-border px-3 py-2">
-          {activeProject ? (
+          {activeProject && persistenceRemote ? (
             <p className="text-xs leading-snug text-primary">
               {t('savedProjects.autoSaveActive', { name: activeProject.name })}
             </p>
           ) : (
-            <p className="text-xs leading-snug text-muted-foreground">{t('savedProjects.autoSaveDraft')}</p>
+            <p className="text-xs leading-snug text-muted-foreground">
+              {persistenceRemote ? t('savedProjects.autoSaveDraft') : t('savedProjects.draftSessionOnly')}
+            </p>
           )}
         </div>
 
@@ -190,12 +220,20 @@ export function SavedProjectsMenu() {
               id="new-project-name"
               placeholder={t('savedProjects.placeholderName')}
               value={newName}
+              disabled={!persistenceRemote}
               onChange={(e) => setNewName(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleSaveNew()
               }}
             />
-            <Button type="button" size="icon" variant="secondary" onClick={handleSaveNew} title={t('savedProjects.saveTitle')}>
+            <Button
+              type="button"
+              size="icon"
+              variant="secondary"
+              disabled={!persistenceRemote}
+              onClick={handleSaveNew}
+              title={t('savedProjects.saveTitle')}
+            >
               <Save className="h-4 w-4" />
             </Button>
           </div>
@@ -229,7 +267,14 @@ export function SavedProjectsMenu() {
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-1">
-                    <Button type="button" variant="default" size="sm" className="h-8 flex-1" onClick={() => handleLoad(p.id)}>
+                    <Button
+                      type="button"
+                      variant="default"
+                      size="sm"
+                      className="h-8 flex-1"
+                      disabled={!persistenceRemote}
+                      onClick={() => handleLoad(p.id)}
+                    >
                       <Upload className="h-3.5 w-3.5 mr-1" />
                       {t('savedProjects.load')}
                     </Button>
@@ -238,6 +283,7 @@ export function SavedProjectsMenu() {
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8 shrink-0 text-destructive hover:text-destructive"
+                      disabled={!persistenceRemote}
                       onClick={() => handleDelete(p.id, p.name)}
                       title={t('savedProjects.deleteTitle')}
                     >

@@ -6,7 +6,7 @@ import { ThemeProvider as NextThemesProvider } from 'next-themes'
 const THEME_STORAGE_KEY = 'finance-pilot-theme'
 const LEGACY_THEME_STORAGE_KEY = 'budget-theme'
 
-/** Avant React : migre l’ancienne clé next-themes pour ne pas perdre le choix utilisateur. */
+/** Avant React : migre l’ancienne clé de stockage pour ne pas perdre le choix utilisateur. */
 if (typeof window !== 'undefined') {
   try {
     if (!localStorage.getItem(THEME_STORAGE_KEY) && localStorage.getItem(LEGACY_THEME_STORAGE_KEY)) {

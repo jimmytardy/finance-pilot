@@ -4,6 +4,7 @@ import { resolveHomeLocale } from '@/lib/resolve-home-locale'
 import { buildRouteMetadata, metadataBaseFromEnv } from '@/lib/seo-metadata'
 import { wealthStrategiesCopy } from '@/lib/i18n/wealth-strategies'
 import { WealthStrategiesPage } from '@/components/wealth-strategies-page'
+import { JsonLd } from '@/components/seo/json-ld'
 import fr from '@/locales/fr.json'
 import en from '@/locales/en.json'
 
@@ -33,5 +34,10 @@ export default async function StrategiesPatrimoinePage() {
     keywords: seo.keywords.join(', '),
   }
 
-  return <WealthStrategiesPage locale={locale} jsonLd={jsonLd} />
+  return (
+    <>
+      <JsonLd data={jsonLd} />
+      <WealthStrategiesPage locale={locale} />
+    </>
+  )
 }

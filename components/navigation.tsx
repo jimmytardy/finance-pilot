@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { FinancePilotLogo } from '@/components/finance-pilot-logo'
 import { SavedProjectsMenu } from '@/components/saved-projects-menu'
+import { SimulatorAuthMenu } from '@/components/simulator-auth-menu'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -144,7 +145,7 @@ export function Navigation() {
     setTheme(order[(i + 1) % order.length])
   }
 
-  /** Même icône SSR + 1er rendu client : évite l’écart next-themes (thème résolu avant hydratation). */
+  /** Même icône SSR + 1er rendu client : évite l’écart du provider thème (résolution avant hydratation). */
   const ThemeIcon = !themeReady
     ? Monitor
     : theme === 'dark'
@@ -274,7 +275,7 @@ export function Navigation() {
               </div>
             </div>
 
-            <div className="-mx-1 flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto px-1 pb-0.5 md:mx-0 md:justify-center md:px-2 md:pb-0">
+            <div className="-mx-1 flex min-w-0 flex-1 flex-wrap items-center justify-center gap-0.5 px-1 pb-0.5 md:mx-0 md:px-2 md:pb-0">
               {marketingQuickLinks.map((item) => (
                 <MarketingTextLink
                   key={item.href}
@@ -344,7 +345,7 @@ export function Navigation() {
             </div>
           </div>
         ) : (
-          <div className="flex h-auto min-h-16 flex-wrap items-center gap-y-2 py-2 md:h-16 md:flex-nowrap md:py-0">
+          <div className="flex min-h-16 flex-wrap items-center gap-x-2 gap-y-2 py-2 md:min-h-16 md:flex-nowrap md:py-2">
             <Link
               href="/"
               className={cn(
@@ -356,7 +357,7 @@ export function Navigation() {
               <FinancePilotLogo />
             </Link>
 
-            <div className="hidden min-w-0 flex-1 items-center gap-1 overflow-x-auto md:flex">
+            <div className="hidden min-w-0 flex-1 flex-wrap items-center justify-center gap-1 md:flex">
               {simulatorNavItems
                 .filter((item) => !(item.href === '/' && pathname === '/'))
                 .map((item) => (
@@ -371,6 +372,7 @@ export function Navigation() {
             </div>
 
             <div className="ml-auto flex shrink-0 items-center gap-2">
+              <SimulatorAuthMenu />
               <SavedProjectsMenu />
 
               <Button

@@ -1,3 +1,5 @@
 'use client'
 
-export { default } from '../../gestion-finances/page'
+import GestionFinancesPage from '../../gestion-finances/page'
+
+export default GestionFinancesPage

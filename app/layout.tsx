@@ -4,6 +4,7 @@ import Script from 'next/script'
 import fr from '@/locales/fr.json'
 import { Providers } from '@/app/providers'
 import { getMatomoPublicConfig, getServerEnv } from '@/lib/env'
+import { isGoogleOAuthConfiguredServer } from '@/lib/server-auth-config'
 import './globals.css'
 
 function rootMetadataBase(): URL | undefined {
@@ -62,6 +63,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const googleOAuthConfigured = isGoogleOAuthConfiguredServer()
   const matomo = getMatomoPublicConfig()
   const matomoBaseWithSlash = matomo ? `${matomo.baseUrl.replace(/\/$/, '')}/` : ''
 
@@ -85,7 +87,7 @@ export default function RootLayout({
             ].join('\n')}
           </Script>
         ) : null}
-        <Providers>{children}</Providers>
+        <Providers googleOAuthConfigured={googleOAuthConfigured}>{children}</Providers>
       </body>
     </html>
   )

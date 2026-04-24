@@ -1,7 +1,7 @@
 {
   "meta": {
     "appName": "Finance Pilot",
-    "appDescription": "Browser-based planner for household cash flow, rentals, and long-range savings curves—with scenario compare. Free, no account required; your numbers stay on your device.",
+    "appDescription": "Browser-based planner for household cash flow, rentals, and long-range savings curves—with scenario compare. Free; optional Google sign-in to save scenarios on the server.",
     "siteKeywords": [
       "personal cash flow planner",
       "household budget web app",
@@ -35,7 +35,7 @@
     "navTitle": "Navigation",
     "infoTitle": "About the content",
     "aboutEditorial": "Guides and information pages are written for Finance Pilot by the site author.",
-    "privacyLocal": "The figures you enter in the simulator stay on your device (local processing).",
+    "privacyLocal": "When signed in with Google, your simulator scenarios are stored on our servers; without an account they only exist in the browser session until you close the tab.",
     "cookiesNote": "Anonymous audience metrics may be used to improve the site; we do not sell advertising profiles.",
     "linkHome": "Home",
     "linkSimulator": "Simulator",
@@ -63,6 +63,7 @@
     "languageFr": "Français",
     "languageEn": "English",
     "moreMenu": "Menu",
+    "accountMenu": "Account menu",
     "languageChoice": "Interface language",
     "languageToggle": "Switch to {{lang}}",
     "themeChoice": "Display theme",
@@ -71,8 +72,17 @@
     "themeLight": "Light",
     "themeDark": "Dark"
   },
+  "auth": {
+    "sessionLoading": "Session…",
+    "signInGoogle": "Sign in with Google",
+    "signOut": "Sign out",
+    "bannerGuestTitle": "Simulator without an account",
+    "bannerGuestDescription": "You can enter and edit everything freely. To save your scenarios, named projects, and monthly checklist on the server, sign in with Google.",
+    "bannerSynced": "Your simulator data is saved to your signed-in account (automatic sync).",
+    "bannerBackendDisabled": "Cloud saving is not enabled on this deployment (OAuth / database env vars missing). The simulator still works for the current browser session."
+  },
   "homePage": {
-    "metaTitle": "Finance Pilot: household budget, cash flow and wealth simulator (local, free)",
+    "metaTitle": "Finance Pilot: household budget, cash flow and wealth simulator (free)",
     "metaDescription": "Plan household money flows: data entry, monthly calendar, long-range charts and scenario compare. Educational guides plus a browser-based tool, no mandatory account.",
     "keywords": [
       "personal budget simulator",
@@ -95,7 +105,7 @@
     "ctaSecondary": "View the guides",
     "sectionsTitle": "Tool modules",
     "privacyTitle": "Privacy and projects",
-    "privacyText": "No account required. Save scenarios locally as named projects or export JSON. Switch the interface language (French or English) from the header.",
+    "privacyText": "Without an account, the simulator runs in your browser session. With Google, named projects and the monthly checklist are saved on our servers. JSON export/import remains available. Switch language (French or English) from the header.",
     "featureCards": [
       {
         "href": "/simulateur/donnees",
@@ -323,12 +333,15 @@
     "activeBadge": "Active",
     "autoSaveActive": "Auto-saving to “{{name}}”",
     "autoSaveDraft": "Draft: load a project to attach changes to a named snapshot.",
+    "draftSessionOnly": "Session draft: changes are not stored on the server until you sign in.",
+    "loginToSaveHint": "Google sign-in is required to create named projects and save them to the database.",
+    "oauthNotConfigured": "Google OAuth is not configured on the server or client app: cloud save is unavailable for now.",
     "confirmDelete": "Delete project “{{name}}”?"
   },
   "dataPage": {
     "title": "Data entry",
     "subtitle": "Enter your income, spending, rental properties, and investments.",
-    "footer": "Data is stored locally on your device. Use “Projects” in the top bar to save or load named scenarios. JSON export/import below."
+    "footer": "Without an account, your draft lives in the browser session. Sign in with Google to save to the server via “Projects”. JSON export/import below."
   },
   "dataJson": {
     "export": "Export JSON",
