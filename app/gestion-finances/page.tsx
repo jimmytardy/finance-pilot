@@ -239,7 +239,7 @@ export default function AdvancedFinancePage() {
             <p className="text-sm text-muted-foreground">{t('advancedFinance.empty')}</p>
           ) : (
             <div className="grid gap-6 lg:grid-cols-2">
-              <BreakdownChart data={pieData} title={t('advancedFinance.pieTitle')} />
+              <BreakdownChart data={pieData} title={t('advancedFinance.pieTitle')} showPercentages />
 
               <Card>
                 <CardHeader>

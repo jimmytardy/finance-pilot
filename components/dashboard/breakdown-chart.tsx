@@ -12,6 +12,7 @@ interface BreakdownChartProps {
     value: number
   }[]
   title: string
+  showPercentages?: boolean
 }
 
 const COLORS = [
@@ -22,9 +23,15 @@ const COLORS = [
   'var(--chart-5)',
 ]
 
-export function BreakdownChart({ data, title }: BreakdownChartProps) {
+export function BreakdownChart({ data, title, showPercentages = false }: BreakdownChartProps) {
   const { t, i18n } = useTranslation()
   const formatCurrency = (amount: number) => formatCurrencyAmount(amount, i18n.language)
+  const formatPercent = (ratio: number) =>
+    new Intl.NumberFormat(i18n.language, {
+      style: 'percent',
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    }).format(ratio)
 
   const total = data.reduce((sum, item) => sum + item.value, 0)
 
@@ -78,7 +85,11 @@ export function BreakdownChart({ data, title }: BreakdownChartProps) {
             <ChartTooltip
               content={
                 <ChartTooltipContent
-                  formatter={(value) => formatCurrency(Number(value))}
+                  formatter={(value) => {
+                    const amount = Number(value)
+                    if (!showPercentages || total <= 0) return formatCurrency(amount)
+                    return `${formatCurrency(amount)} (${formatPercent(amount / total)})`
+                  }}
                 />
               }
             />
@@ -94,7 +105,14 @@ export function BreakdownChart({ data, title }: BreakdownChartProps) {
                 />
                 <span className="text-muted-foreground">{item.name}</span>
               </div>
-              <span className="font-mono font-medium">{formatCurrency(item.value)}</span>
+              <span className="font-mono font-medium">
+                {formatCurrency(item.value)}
+                {showPercentages && total > 0 ? (
+                  <span className="ml-2 text-xs font-normal text-muted-foreground">
+                    {formatPercent(item.value / total)}
+                  </span>
+                ) : null}
+              </span>
             </div>
           ))}
         </div>

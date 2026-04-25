@@ -1,172 +1,267 @@
 # Finance Pilot
 
-Application web de **pilotage de budget personnel** : revenus, charges fixes, budgets annexes, immobilier locatif, investissements et indicateurs dérivés. Les données restent sur l’appareil du navigateur (stockage local).
+Application web de **pilotage de budget personnel** : revenus, charges fixes, budgets annexes, immobilier locatif, investissements, pilotage mensuel, estimations et comparaison de scénarios. Interface **français / anglais**, thème clair / sombre / système.
+
+Le simulateur est **utilisable sans compte** (données en session navigateur). Avec **PostgreSQL**, **NextAuth** et **Google OAuth** configurés, la sauvegarde **projets + état simulateur** peut être **synchronisée sur le serveur** pour les utilisateurs connectés.
+
+---
 
 ## Sommaire
 
+- [Fonctionnalités](#fonctionnalités)
+- [Pile technique](#pile-technique)
 - [Prérequis](#prérequis)
-- [Démarrage rapide](#démarrage-rapide)
-- [Scripts npm](#scripts-npm)
-- [Fonctionnalités principales](#fonctionnalités-principales)
-- [Architecture](#architecture)
-- [Données et persistance](#données-et-persistance)
+- [Installation](#installation)
+- [Variables d’environnement](#variables-denvironnement)
+- [Base de données et Prisma](#base-de-données-et-prisma)
+- [Authentification (NextAuth + Google)](#authentification-nextauth--google)
+- [Analytics (Matomo)](#analytics-matomo)
+- [Développement](#développement)
+- [Production (build, PM2, nginx)](#production-build-pm2-nginx)
+- [Persistance des données](#persistance-des-données)
+- [Architecture et dossiers](#architecture-et-dossiers)
+- [Routage](#routage)
 - [Internationalisation](#internationalisation)
-- [Qualité et évolution](#qualité-et-évolution)
+- [Qualité et contribution](#qualité-et-contribution)
+- [Licence](#licence)
+
+---
+
+## Fonctionnalités
+
+- Saisie des **revenus**, **charges fixes**, **budgets annexes**, **biens locatifs** et **investissements** avec normalisation et métriques dérivées.
+- **Gestion mensuelle** : planification, coches par mois, graphiques.
+- **Estimations**, **comparaison** de scénarios, graphiques (Recharts).
+- **Projets enregistrés** : plusieurs jeux de données nommés, projet actif ; persistance **session** ou **serveur** selon la connexion.
+- **Export / import JSON** (page Données).
+- **Connexion Google** (optionnelle) et API **`/api/simulator/state`** pour un état JSON unique par utilisateur (Prisma).
+- **Matomo** optionnel via variables `NEXT_PUBLIC_*` (voir [Analytics](#analytics-matomo)).
+
+---
+
+## Pile technique
+
+| Domaine        | Technologie |
+| -------------- | ----------- |
+| Framework      | **Next.js 16** (App Router), **React 19**, **TypeScript** |
+| Auth           | **NextAuth v4** (sessions en base), **@next-auth/prisma-adapter** |
+| Données        | **PostgreSQL**, **Prisma 6** |
+| UI             | **Tailwind CSS 4**, **Radix UI**, composants type shadcn (`components/ui/`) |
+| Formulaires    | **react-hook-form**, **Zod** |
+| i18n           | **i18next** / **react-i18next** (`locales/`) |
+| Graphiques     | **Recharts** |
+| Thème          | **next-themes** (clé `finance-pilot-theme`, migration depuis `budget-theme`) |
+
+---
 
 ## Prérequis
 
-- [Node.js](https://nodejs.org/) (LTS recommandé)
-- [pnpm](https://pnpm.io/) (gestionnaire de paquets utilisé par le projet)
+- **Node.js** (LTS recommandé, compatible avec Next 16).
+- **pnpm** (gestionnaire utilisé dans ce dépôt).
+- **PostgreSQL** si vous activez la sauvegarde serveur et NextAuth (voir [Base de données](#base-de-données-et-prisma)).
 
-## Démarrage rapide
+---
+
+## Installation
 
 ```bash
+git clone <url-du-depot>
+cd Budget-anticipation   # ou le nom de votre dossier cloné
 pnpm install
+```
+
+`postinstall` exécute **`prisma generate`** (client Prisma).
+
+Copiez le modèle d’environnement et adaptez les valeurs :
+
+```bash
+cp .env.example .env
+# ou pour le dev local courant :
+cp .env.example .env.local
+```
+
+Puis configurez au minimum `DATABASE_URL` si vous utilisez la base, et les variables NextAuth / Google si vous voulez la connexion (voir sections suivantes).
+
+Démarrage du serveur de développement :
+
+```bash
 pnpm dev
 ```
 
 Ouvrir [http://localhost:3000](http://localhost:3000).
 
-Build de production :
+---
 
-```bash
-pnpm build
-pnpm start
-```
+## Variables d’environnement
 
-## Scripts npm
+La liste complète et les commentaires se trouvent dans :
 
+- **`.env.example`** — modèle général (développement + documentation des clés).
+- **`config/environments/production.env.example`** — modèle orienté **déploiement** (VM, nginx, PM2).
 
-| Script       | Rôle                             |
-| ------------ | -------------------------------- |
-| `pnpm dev`   | Serveur de développement Next.js |
-| `pnpm build` | Compilation optimisée            |
-| `pnpm start` | Serveur après `build`            |
-| `pnpm lint`  | ESLint sur le dépôt              |
+Variables principales :
 
+| Variable | Rôle |
+| -------- | ---- |
+| `DATABASE_URL` | URL PostgreSQL pour Prisma / NextAuth. |
+| `NEXTAUTH_SECRET` | Secret de signature des cookies (ex. `openssl rand -base64 32`). |
+| `NEXTAUTH_URL` | URL publique de l’app (sans slash final), ex. `http://localhost:3000` ou `https://votre-domaine`. |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | OAuth Google côté serveur. |
+| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | Même **client ID** que côté serveur : affichage du bouton de connexion côté client. |
+| `NEXT_PUBLIC_APP_URL` | URL canonique du site (SEO, métadonnées, `metadataBase`). |
+| `NEXT_PUBLIC_MATOMO_URL` / `NEXT_PUBLIC_MATOMO_SITE_ID` | Matomo ; les deux requis pour activer le script. |
+| `NODE_ENV`, `PORT`, `HOSTNAME` | Surtout **production** ; voir `lib/env.ts` et `ecosystem.config.cjs`. |
 
-## Fonctionnalités principales
-
-- Saisie et suivi des **revenus**, **charges fixes**, **budgets annexes**, **biens locatifs** et **investissements**.
-- **Planification** (catégorie, mode manuel / automatique, jour du mois) pour le pilotage mensuel.
-- **Graphiques** (camembert, tendances) et pages de **comparaison** / **estimations**.
-- **Projets enregistrés** : plusieurs jeux de données nommés, projet actif, persistance locale.
-- **Export / import JSON** des données (barre d’outils sur la page données).
-- **Thème** clair / sombre / système et **langue** d’interface (fichiers `locales/`).
-
-## Architecture
-
-### Pile technique
-
-- **Next.js** (App Router), **React**, **TypeScript**
-- **Tailwind CSS** v4 pour le style
-- **Radix UI** + composants type shadcn dans `components/ui/`
-- **react-i18next** pour les textes
-- **Recharts** pour les graphiques
-- **Zod** (et éventuellement **react-hook-form**) pour la validation côté formulaires / I/O JSON
-
-### Organisation des dossiers
-
-```
-app/                    # Routes, layout, styles globaux (App Router)
-components/             # Composants réutilisables (navigation, dashboard, etc.)
-components/ui/          # Primitives UI (boutons, cartes, dialogues…)
-contexts/               # Contexte React principal des données financières
-hooks/                  # Hooks (données financières, projets, planification…)
-lib/                    # Types, normalisation, calculs métier, i18n, utilitaires
-locales/                # Fichiers de traduction (ex. fr, en)
-public/                 # Assets statiques servis à la racine
-```
-
-### Flux de données (vue d’ensemble)
-
-L’application est majoritairement **côté client** : le provider des données financières charge et enregistre dans `localStorage`, expose des actions CRUD et des agrégats (totaux, disponible à investir, etc.). Les pages consomment ce contexte via le hook `useFinanceData`.
-
-```mermaid
-flowchart TB
-  subgraph UI["Interface"]
-    Pages["app/*/page.tsx"]
-    Dash["components/dashboard/*"]
-    Nav["components/navigation.tsx"]
-  end
-
-  subgraph State["État applicatif"]
-    FDP["FinanceDataProvider\n(contexts/finance-data-context)"]
-    Projects["useSavedProjects\n(hooks/use-saved-projects)"]
-    Schedule["useScheduleCompletion\n(hooks/use-schedule-completion)"]
-  end
-
-  subgraph Domain["Logique métier"]
-    Types["lib/types.ts"]
-    Norm["lib/normalize-finance-data.ts"]
-    Metrics["lib/finance-metrics.ts"]
-    JsonIO["lib/finance-json-io.ts"]
-  end
-
-  subgraph Storage["Navigateur"]
-    LS[("localStorage")]
-  end
-
-  Pages --> FDP
-  Dash --> FDP
-  Nav --> Projects
-  FDP --> Norm
-  FDP --> Metrics
-  FDP --> Types
-  FDP <--> LS
-  Projects <--> LS
-  Schedule <--> LS
-  JsonIO --> Types
-```
-
-
-
-### Principes de conception
-
-1. **Types centralisés** (`lib/types.ts`) : modèle unique des entités financières.
-2. **Normalisation à l’entrée** : lecture disque / import JSON passe par `normalizeFinanceData` pour tolérer d’anciennes formes et garantir un objet cohérent.
-3. **Calculs purs** dans `lib/`* (métriques, loyers nets, projections) : plus simples à tester et à faire évoluer sans coupler à React.
-4. **UI découplée** : sections du tableau de bord dans `components/dashboard/` ; primitives dans `components/ui/`.
-5. **Barrel minimal** : `hooks/use-finance-data.ts` réexporte le provider et le hook du contexte pour un import unique côté `app/providers.tsx`.
-
-### Routage (pages)
-
-| Chemin                         | Rôle indicatif                                                                                                  |
-| ------------------------------ | --------------------------------------------------------------------------------------------------------------- |
-| `/`                            | Accueil : hero, **liste des guides** (`#guides`), modules simulateur, confidentialité                             |
-| `/guides/…`                    | Fiches guides (4 étapes, 7 stratégies, budget-trésorerie, questionnaire profil) — l’index `/guides` redirige vers `/#guides` |
-| `/simulateur`                  | Hub du simulateur (cartes vers les sous-pages)                                                                  |
-| `/simulateur/donnees`          | Saisie des données (revenus, charges, budgets annexes, immobilier, investissements), barre export / import JSON   |
-| `/simulateur/gestion-mensuel`  | Gestion mensuelle : planification, prélèvements, coches, graphique de répartition                               |
-| `/simulateur/estimations`      | Estimations et graphiques associés                                                                              |
-| `/simulateur/comparaison`      | Page de comparaison / synthèses                                                                                 |
-
-Les anciennes URLs (`/donnees`, `/gestion-finances`, `/estimations`, `/comparaison`) redirigent en **308** vers les chemins ci-dessus (`next.config.mjs`). L’URL **`/guides`** (index) redirige en **308** vers **`/#guides`** sur l’accueil.
-
-À partir du breakpoint `md`, les liens du simulateur sont dans la barre ; sur mobile, ils sont regroupés dans le menu burger (`components/navigation.tsx`).
-
-## Données et persistance
-
-- **Données courantes** : `finance-pilot-data` (migration automatique depuis `finance-dashboard-data` si présente).
-- **Projets** : `finance-pilot-saved-projects` et projet actif `finance-pilot-active-project-id` (migrations depuis les anciennes clés `finance-dashboard-`* / `finance-active-project-id`).
-- **Coches de planification (mois / lignes)** : `finance-pilot-schedule-completion` (migration depuis `finance-schedule-manual-completion`).
-- **Locale UI** : `finance-pilot-locale` dans `lib/i18n/i18n.ts` (migration depuis `budget-propulsion-locale`).
-- **Thème** : `next-themes`, clé `finance-pilot-theme` (migration depuis `budget-theme`, voir `components/theme-provider.tsx`).
-
-Aucun compte utilisateur ni serveur applicatif n’est requis pour stocker les chiffres : prévoir une **sauvegarde export JSON** avant changement de navigateur ou nettoyage du site.
-
-## Internationalisation
-
-- Configuration dans `lib/i18n/` ; catalogues JSON dans `locales/`.
-- Langues UI pilotées par `lib/ui-languages.ts` et le sélecteur dans la navigation.
-- La locale est persistée (clé dédiée, avec migration depuis d’anciens noms de clé si nécessaire).
-
-## Qualité et évolution
-
-- Lancer `pnpm lint` avant une contribution ou une release.
-- Pour ajouter des blocs UI shadcn, respecter `components.json` (aliases `@/components`, `@/lib`, `@/hooks`).
-- Les dépendances Radix listées dans `package.json` peuvent dépasser les seuls fichiers présents dans `components/ui/` : un nettoyage périodique des paquets inutilisés est possible sans changer le comportement fonctionnel.
+**Important :** la CLI **Prisma** charge en priorité **`.env`**, pas `.env.local`. Pour `pnpm prisma db push`, exportez `DATABASE_URL` ou dupliquez-la dans `.env`.
 
 ---
 
-Licence et auteur : selon les choix du dépôt (à compléter si besoin).
+## Base de données et Prisma
+
+Le schéma (`prisma/schema.prisma`) inclut :
+
+- Modèles **NextAuth** : `User`, `Account`, `Session`, `VerificationToken`.
+- **`SimulatorState`** : un document JSON par utilisateur (`userId` unique).
+
+Après avoir défini `DATABASE_URL` dans un fichier lu par Prisma :
+
+```bash
+pnpm prisma db push
+```
+
+*(ou `pnpm db:push`, alias défini dans `package.json`.)*
+
+Pour des migrations versionnées en équipe :
+
+```bash
+pnpm db:migrate
+```
+
+En production, préférez `prisma migrate deploy` une fois les migrations générées et versionnées.
+
+---
+
+## Authentification (NextAuth + Google)
+
+1. [Google Cloud Console](https://console.cloud.google.com/) : créer des identifiants **OAuth client ID** de type **Application Web**.
+2. **URI de redirection autorisée** : `{NEXTAUTH_URL}/api/auth/callback/google` (exemple local : `http://localhost:3000/api/auth/callback/google`).
+3. **Origines JavaScript** : même origine que `NEXTAUTH_URL` (schéma + hôte + port).
+4. Renseigner `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXT_PUBLIC_GOOGLE_CLIENT_ID` et `NEXTAUTH_URL` / `NEXTAUTH_SECRET` dans votre `.env`.
+
+L’API route handler est dans `app/api/auth/[...nextauth]/route.ts` ; la configuration dans `lib/auth-options.ts`.
+
+---
+
+## Analytics (Matomo)
+
+Si `NEXT_PUBLIC_MATOMO_URL` (URL de base valide **http/https**) et `NEXT_PUBLIC_MATOMO_SITE_ID` (entier, ex. `1`) sont définis, `app/layout.tsx` injecte le snippet Matomo (chargement paresseux). Sinon, aucun tracker n’est chargé.
+
+---
+
+## Développement
+
+| Commande | Description |
+| -------- | ----------- |
+| `pnpm dev` | Serveur Next.js en mode développement. |
+| `pnpm build` | Build de production. |
+| `pnpm start` | Sert l’application après `build` (utilise `.env.production` si présent). |
+| `pnpm lint` | ESLint sur le dépôt. |
+| `pnpm db:push` | Applique le schéma Prisma sur la base (`prisma db push`). |
+| `pnpm db:migrate` | Migrations interactives (`prisma migrate dev`). |
+
+---
+
+## Production (build, PM2, nginx)
+
+1. Variables : copier `config/environments/production.env.example` vers **`.env.production`** à la racine (voir commentaires dans le fichier).
+2. Build : `pnpm build`.
+3. **PM2** : `ecosystem.config.cjs` charge **`.env.production`** puis **`.env`** et démarre `pnpm start` avec `NODE_ENV`, `PORT`, `HOSTNAME` passés à l’app.
+
+Exemple :
+
+```bash
+cp config/environments/production.env.example .env.production
+# Éditer .env.production, puis :
+pnpm build
+pm2 start ecosystem.config.cjs
+```
+
+Placez **nginx** (ou équivalent) en reverse proxy vers `HOSTNAME:PORT` (souvent `127.0.0.1` et un port interne), avec TLS côté proxy.
+
+---
+
+## Persistance des données
+
+| Contexte | Comportement |
+| -------- | ------------ |
+| **Non connecté** | Données du simulateur en **mémoire / session** (pas de `localStorage` pour le bundle principal géré par `SimulatorWorkspaceProvider`). Export JSON possible. |
+| **Connecté** (OAuth + DB) | Chargement / enregistrement via **`GET` / `PUT` `/api/simulator/state`** et table `SimulatorState`. |
+
+Les clés **thème** et **locale** peuvent rester dans le navigateur (voir `components/theme-provider.tsx`, `lib/i18n/`).
+
+---
+
+## Architecture et dossiers
+
+```
+app/                      # App Router : pages, layout, API routes
+  api/auth/[...nextauth]/ # NextAuth
+  api/simulator/state/    # État simulateur (authentifié)
+components/               # UI métier (navigation, dashboard, SEO…)
+components/ui/            # Primitives (shadcn / Radix)
+config/environments/      # Modèles .env pour la production
+contexts/                 # Contextes React (simulateur, auth serveur)
+hooks/                    # Hooks (données financières dérivées du workspace)
+lib/                      # Types, normalisation, auth, env, Prisma, i18n…
+locales/                  # Traductions JSON (fr, en)
+prisma/                   # schema.prisma
+public/                   # Assets statiques
+```
+
+Flux simplifié côté simulateur :
+
+- **`SimulatorWorkspaceProvider`** : bundle financier + projets + coches ; sync serveur si session valide.
+- **`FinanceDataProvider`** : vue « finance » alignée sur le bundle du workspace (pages simulateur).
+
+Les pages marketing (`/`, `/guides/*`, `/strategies-patrimoine`) **ne montent pas** les providers financiers lourds (`ConditionalFinanceProvider`).
+
+---
+
+## Routage
+
+| Chemin | Rôle |
+| ------ | ---- |
+| `/` | Accueil, guides (`#guides`), liens vers le simulateur |
+| `/guides/…` | Articles guides |
+| `/strategies-patrimoine` | Page thématique budget & épargne |
+| `/simulateur` | Hub des modules simulateur |
+| `/simulateur/donnees` | Saisie + export / import JSON |
+| `/simulateur/gestion-mensuel` | Pilotage mensuel |
+| `/simulateur/estimations` | Estimations |
+| `/simulateur/comparaison` | Comparaison |
+
+Redirections **permanentes** (`next.config.mjs`) : `/donnees` → `/simulateur/donnees`, `/gestion-finances` → `/simulateur/gestion-mensuel`, `/estimations` → `/simulateur/estimations`, `/comparaison` → `/simulateur/comparaison`, `/guides` → `/#guides`.
+
+Sur **petit écran**, les entrées du simulateur sont dans le **menu latéral** ; le compte connecté s’ouvre via l’**icône utilisateur** (menu nom + déconnexion).
+
+---
+
+## Internationalisation
+
+- Fichiers : `locales/fr.json`, `locales/en.json`.
+- Configuration : `lib/i18n/`, langues UI : `lib/ui-languages.ts`.
+- Le sélecteur de langue est dans la navigation.
+
+---
+
+## Qualité et contribution
+
+- Lancer **`pnpm lint`** avant une PR ou une release.
+- Respecter les alias TypeScript (`@/components`, `@/lib`, `@/hooks`, etc.).
+- **Next.js** : `typescript.ignoreBuildErrors` peut être activé dans `next.config.mjs` — vérifier les erreurs TypeScript en local malgré tout.
+
+---
+
+## Licence
+
+À préciser selon votre choix (propriétaire, MIT, etc.).

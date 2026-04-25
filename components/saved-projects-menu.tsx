@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { signIn } from 'next-auth/react'
 import { useTranslation } from 'react-i18next'
 import { useFinanceData } from '@/hooks/use-finance-data'
@@ -33,6 +34,7 @@ function formatProjectDate(iso: string, lng: string) {
 
 export function SavedProjectsMenu() {
   const { t, i18n } = useTranslation()
+  const router = useRouter()
   const { data, isLoaded: financeLoaded, importFinanceData, startNewDraft } = useFinanceData()
   const {
     projects,
@@ -129,11 +131,13 @@ export function SavedProjectsMenu() {
     persistOrphanDraftIfNeeded()
     flushActiveProjectToStore()
     if (id === activeProjectId) {
+      router.push('/simulateur/donnees')
       setOpen(false)
       return
     }
     importFinanceData(project.data)
     setActiveProjectId(project.id)
+    router.push('/simulateur/donnees')
     setOpen(false)
   }
 
@@ -177,7 +181,12 @@ export function SavedProjectsMenu() {
               <Lock className="size-4 text-primary" aria-hidden />
               <AlertDescription className="flex flex-col gap-2 text-xs leading-relaxed">
                 <span>{t('savedProjects.loginToSaveHint')}</span>
-                <Button type="button" size="sm" className="w-full gap-2 sm:w-auto" onClick={() => void signIn('google')}>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="w-full gap-2 sm:w-auto"
+                  onClick={() => void signIn('google', { callbackUrl: '/simulateur/donnees' })}
+                >
                   {t('auth.signInGoogle')}
                 </Button>
               </AlertDescription>

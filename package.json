@@ -12,6 +12,9 @@
     "db:migrate": "prisma migrate dev"
   },
   "dependencies": {
+    "@dnd-kit/core": "latest",
+    "@dnd-kit/sortable": "latest",
+    "@dnd-kit/utilities": "latest",
     "@next-auth/prisma-adapter": "^1.0.7",
     "@hookform/resolvers": "^3.9.1",
     "@prisma/client": "^6.3.1",

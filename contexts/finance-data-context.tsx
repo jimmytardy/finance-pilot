@@ -16,6 +16,16 @@ import i18n from '@/lib/i18n/i18n'
 import { getLocalizedExampleFinanceData } from '@/lib/example-finance-localized'
 import { useSimulatorWorkspace } from '@/contexts/simulator-workspace-context'
 
+function reorderByIds<T extends { id: string }>(list: T[], activeId: string, overId: string): T[] {
+  const from = list.findIndex((item) => item.id === activeId)
+  const to = list.findIndex((item) => item.id === overId)
+  if (from === -1 || to === -1 || from === to) return list
+  const next = [...list]
+  const [row] = next.splice(from, 1)
+  next.splice(to, 0, row)
+  return next
+}
+
 type FinanceDataContextValue = {
   data: FinanceData
   isLoaded: boolean
@@ -24,15 +34,21 @@ type FinanceDataContextValue = {
   addRevenue: (revenue: Omit<Revenue, 'id'>) => void
   updateRevenue: (id: string, updates: Partial<Revenue>) => void
   deleteRevenue: (id: string) => void
+  moveRevenue: (id: string, direction: 'up' | 'down') => void
   addFixedExpense: (expense: Omit<FixedExpense, 'id'>) => void
   updateFixedExpense: (id: string, updates: Partial<FixedExpense>) => void
   deleteFixedExpense: (id: string) => void
+  moveFixedExpense: (id: string, direction: 'up' | 'down') => void
+  reorderRevenue: (activeId: string, overId: string) => void
+  reorderFixedExpense: (activeId: string, overId: string) => void
+  reorderAnnexBudget: (activeId: string, overId: string) => void
   addAnnexBudget: (budget: Omit<AnnexBudget, 'id'>) => void
   updateAnnexBudget: (id: string, updates: Partial<AnnexBudget>) => void
   deleteAnnexBudget: (id: string) => void
   addRentalProperty: (property: Omit<RentalProperty, 'id'>) => void
   updateRentalProperty: (id: string, updates: Partial<RentalProperty>) => void
   deleteRentalProperty: (id: string) => void
+  reorderRentalProperty: (activeId: string, overId: string) => void
   addInvestment: (investment: Omit<Investment, 'id'>) => void
   updateInvestment: (id: string, updates: Partial<Investment>) => void
   deleteInvestment: (id: string) => void
@@ -79,6 +95,27 @@ export function FinanceDataProvider({ children }: { children: ReactNode }) {
     }))
   }, [setData])
 
+  const moveRevenue = useCallback((id: string, direction: 'up' | 'down') => {
+    setData((prev) => {
+      const index = prev.revenues.findIndex((r) => r.id === id)
+      if (index === -1) return prev
+      const targetIndex = direction === 'up' ? index - 1 : index + 1
+      if (targetIndex < 0 || targetIndex >= prev.revenues.length) return prev
+      const next = [...prev.revenues]
+      const [row] = next.splice(index, 1)
+      next.splice(targetIndex, 0, row)
+      return { ...prev, revenues: next }
+    })
+  }, [setData])
+
+  const reorderRevenue = useCallback((activeId: string, overId: string) => {
+    setData((prev) => {
+      const next = reorderByIds(prev.revenues, activeId, overId)
+      if (next === prev.revenues) return prev
+      return { ...prev, revenues: next }
+    })
+  }, [setData])
+
   const addFixedExpense = useCallback((expense: Omit<FixedExpense, 'id'>) => {
     const newExpense: FixedExpense = { ...expense, id: crypto.randomUUID() }
     setData((prev) => ({ ...prev, fixedExpenses: [...prev.fixedExpenses, newExpense] }))
@@ -96,6 +133,27 @@ export function FinanceDataProvider({ children }: { children: ReactNode }) {
       ...prev,
       fixedExpenses: prev.fixedExpenses.filter((e) => e.id !== id),
     }))
+  }, [setData])
+
+  const moveFixedExpense = useCallback((id: string, direction: 'up' | 'down') => {
+    setData((prev) => {
+      const index = prev.fixedExpenses.findIndex((e) => e.id === id)
+      if (index === -1) return prev
+      const targetIndex = direction === 'up' ? index - 1 : index + 1
+      if (targetIndex < 0 || targetIndex >= prev.fixedExpenses.length) return prev
+      const next = [...prev.fixedExpenses]
+      const [row] = next.splice(index, 1)
+      next.splice(targetIndex, 0, row)
+      return { ...prev, fixedExpenses: next }
+    })
+  }, [setData])
+
+  const reorderFixedExpense = useCallback((activeId: string, overId: string) => {
+    setData((prev) => {
+      const next = reorderByIds(prev.fixedExpenses, activeId, overId)
+      if (next === prev.fixedExpenses) return prev
+      return { ...prev, fixedExpenses: next }
+    })
   }, [setData])
 
   const addAnnexBudget = useCallback((budget: Omit<AnnexBudget, 'id'>) => {
@@ -117,6 +175,14 @@ export function FinanceDataProvider({ children }: { children: ReactNode }) {
     }))
   }, [setData])
 
+  const reorderAnnexBudget = useCallback((activeId: string, overId: string) => {
+    setData((prev) => {
+      const next = reorderByIds(prev.annexBudgets, activeId, overId)
+      if (next === prev.annexBudgets) return prev
+      return { ...prev, annexBudgets: next }
+    })
+  }, [setData])
+
   const addRentalProperty = useCallback((property: Omit<RentalProperty, 'id'>) => {
     const newProperty: RentalProperty = { ...property, id: crypto.randomUUID() }
     setData((prev) => ({ ...prev, rentalProperties: [...prev.rentalProperties, newProperty] }))
@@ -134,6 +200,14 @@ export function FinanceDataProvider({ children }: { children: ReactNode }) {
       ...prev,
       rentalProperties: prev.rentalProperties.filter((p) => p.id !== id),
     }))
+  }, [setData])
+
+  const reorderRentalProperty = useCallback((activeId: string, overId: string) => {
+    setData((prev) => {
+      const next = reorderByIds(prev.rentalProperties, activeId, overId)
+      if (next === prev.rentalProperties) return prev
+      return { ...prev, rentalProperties: next }
+    })
   }, [setData])
 
   const addInvestment = useCallback((investment: Omit<Investment, 'id'>) => {
@@ -179,15 +253,21 @@ export function FinanceDataProvider({ children }: { children: ReactNode }) {
       addRevenue,
       updateRevenue,
       deleteRevenue,
+      moveRevenue,
+      reorderRevenue,
       addFixedExpense,
       updateFixedExpense,
       deleteFixedExpense,
+      moveFixedExpense,
+      reorderFixedExpense,
+      reorderAnnexBudget,
       addAnnexBudget,
       updateAnnexBudget,
       deleteAnnexBudget,
       addRentalProperty,
       updateRentalProperty,
       deleteRentalProperty,
+      reorderRentalProperty,
       addInvestment,
       updateInvestment,
       deleteInvestment,
@@ -209,15 +289,21 @@ export function FinanceDataProvider({ children }: { children: ReactNode }) {
       addRevenue,
       updateRevenue,
       deleteRevenue,
+      moveRevenue,
+      reorderRevenue,
       addFixedExpense,
       updateFixedExpense,
       deleteFixedExpense,
+      moveFixedExpense,
+      reorderFixedExpense,
+      reorderAnnexBudget,
       addAnnexBudget,
       updateAnnexBudget,
       deleteAnnexBudget,
       addRentalProperty,
       updateRentalProperty,
       deleteRentalProperty,
+      reorderRentalProperty,
       addInvestment,
       updateInvestment,
       deleteInvestment,

@@ -1,6 +1,22 @@
 'use client'
 
 import { useState } from 'react'
+import { CSS } from '@dnd-kit/utilities'
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
 import { useTranslation } from 'react-i18next'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -8,7 +24,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Plus, Pencil, Trash2, TrendingUp } from 'lucide-react'
+import { GripVertical, Plus, Pencil, Trash2, TrendingUp } from 'lucide-react'
 import type { Revenue } from '@/lib/types'
 import { formatCurrencyAmount } from '@/lib/i18n/locale'
 
@@ -17,10 +33,76 @@ interface RevenueSectionProps {
   onAdd: (revenue: Omit<Revenue, 'id'>) => void
   onUpdate: (id: string, updates: Partial<Revenue>) => void
   onDelete: (id: string) => void
+  onReorder: (activeId: string, overId: string) => void
   totalMonthly: number
 }
 
-export function RevenueSection({ revenues, onAdd, onUpdate, onDelete, totalMonthly }: RevenueSectionProps) {
+function SortableRevenueRow({
+  revenue,
+  onEdit,
+  onDelete,
+  formatCurrency,
+  getMonthlyAmount,
+}: {
+  revenue: Revenue
+  onEdit: (row: Revenue) => void
+  onDelete: (id: string) => void
+  formatCurrency: (amount: number) => string
+  getMonthlyAmount: (row: Revenue) => number
+}) {
+  const { t } = useTranslation()
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: revenue.id })
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center justify-between rounded-lg bg-secondary/50 p-3 ${isDragging ? 'opacity-70' : ''}`}
+    >
+      <div className="flex min-w-0 items-start gap-2">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="mt-0.5 h-8 w-8 shrink-0 cursor-grab active:cursor-grabbing"
+          title={t('common.dragToReorder')}
+          aria-label={t('common.dragToReorder')}
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="h-4 w-4" />
+        </Button>
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <span className="truncate font-medium">{revenue.label}</span>
+          <span className="text-xs text-muted-foreground">
+            {revenue.frequency === 'monthly' ? t('common.monthly') : t('common.annual')}
+            {revenue.frequency === 'annual' && ` (${formatCurrency(getMonthlyAmount(revenue))}${t('common.perMonth')})`}
+          </span>
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="font-mono font-medium text-primary">{formatCurrency(revenue.amount)}</span>
+        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(revenue)}>
+          <Pencil className="h-4 w-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-destructive hover:text-destructive"
+          onClick={() => onDelete(revenue.id)}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+export function RevenueSection({ revenues, onAdd, onUpdate, onDelete, onReorder, totalMonthly }: RevenueSectionProps) {
   const { t, i18n } = useTranslation()
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -32,6 +114,17 @@ export function RevenueSection({ revenues, onAdd, onUpdate, onDelete, totalMonth
 
   const getMonthlyAmount = (revenue: Revenue) => {
     return revenue.frequency === 'annual' ? revenue.amount / 12 : revenue.amount
+  }
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    onReorder(String(active.id), String(over.id))
   }
 
   const handleSubmit = () => {
@@ -140,38 +233,22 @@ export function RevenueSection({ revenues, onAdd, onUpdate, onDelete, totalMonth
             {t('revenue.empty')}
           </p>
         ) : (
-          <div className="flex flex-col gap-3">
-            {revenues.map((revenue) => (
-              <div
-                key={revenue.id}
-                className="flex items-center justify-between p-3 rounded-lg bg-secondary/50"
-              >
-                <div className="flex flex-col gap-0.5">
-                  <span className="font-medium">{revenue.label}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {revenue.frequency === 'monthly' ? t('common.monthly') : t('common.annual')}
-                    {revenue.frequency === 'annual' && ` (${formatCurrency(getMonthlyAmount(revenue))}${t('common.perMonth')})`}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono font-medium text-primary">
-                    {formatCurrency(revenue.amount)}
-                  </span>
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEdit(revenue)}>
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-destructive hover:text-destructive"
-                    onClick={() => onDelete(revenue.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={revenues.map((r) => r.id)} strategy={verticalListSortingStrategy}>
+              <div className="flex flex-col gap-3">
+                {revenues.map((revenue) => (
+                  <SortableRevenueRow
+                    key={revenue.id}
+                    revenue={revenue}
+                    onEdit={startEdit}
+                    onDelete={onDelete}
+                    formatCurrency={formatCurrency}
+                    getMonthlyAmount={getMonthlyAmount}
+                  />
+                ))}
               </div>
-            ))}
-          </div>
+            </SortableContext>
+          </DndContext>
         )}
       </CardContent>
     </Card>

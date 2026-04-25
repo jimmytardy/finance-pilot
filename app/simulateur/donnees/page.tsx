@@ -8,8 +8,10 @@ import { FixedExpensesSection } from '@/components/dashboard/fixed-expenses-sect
 import { AnnexBudgetSection } from '@/components/dashboard/annex-budget-section'
 import { RentalPropertySection } from '@/components/dashboard/rental-property-section'
 import { InvestmentsSection } from '@/components/dashboard/investments-section'
+import { SummaryCard } from '@/components/dashboard/summary-card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { FinanceJsonIoToolbar } from '@/components/finance-json-io-toolbar'
+import { ArrowDownRight, Scale, TrendingUp } from 'lucide-react'
 
 export default function DataPage() {
   const { t } = useTranslation()
@@ -20,18 +22,22 @@ export default function DataPage() {
     addRevenue,
     updateRevenue,
     deleteRevenue,
+    reorderRevenue,
     // Fixed expenses
     addFixedExpense,
     updateFixedExpense,
     deleteFixedExpense,
+    reorderFixedExpense,
     // Annex budgets
     addAnnexBudget,
     updateAnnexBudget,
     deleteAnnexBudget,
+    reorderAnnexBudget,
     // Rental properties
     addRentalProperty,
     updateRentalProperty,
     deleteRentalProperty,
+    reorderRentalProperty,
     calculateRentalNetResult,
     // Investments
     addInvestment,
@@ -46,6 +52,9 @@ export default function DataPage() {
     totalMonthlyContributions,
     availableToInvest,
   } = useFinanceData()
+
+  const totalOutflows = totalFixedExpenses + totalAnnexBudgets + totalMonthlyContributions
+  const monthlyNet = totalMonthlyRevenue + totalRentalNetResult - totalOutflows
 
   const categorySuggestions = useMemo(() => {
     const set = new Set<string>()
@@ -87,6 +96,27 @@ export default function DataPage() {
           <p className="mt-1 text-muted-foreground">{t('dataPage.subtitle')}</p>
         </header>
 
+        <section className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <SummaryCard
+            title={t('dataPage.liveRevenue')}
+            value={totalMonthlyRevenue}
+            trend="positive"
+            icon={<TrendingUp className="h-5 w-5 text-primary" />}
+          />
+          <SummaryCard
+            title={t('dataPage.liveOutflows')}
+            value={totalOutflows}
+            trend="negative"
+            icon={<ArrowDownRight className="h-5 w-5 text-destructive" />}
+          />
+          <SummaryCard
+            title={t('dataPage.liveNet')}
+            value={monthlyNet}
+            trend={monthlyNet >= 0 ? 'positive' : 'negative'}
+            icon={<Scale className="h-5 w-5 text-chart-5" />}
+          />
+        </section>
+
         {/* Revenue & Fixed Expenses */}
         <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
           <RevenueSection
@@ -94,6 +124,7 @@ export default function DataPage() {
             onAdd={addRevenue}
             onUpdate={updateRevenue}
             onDelete={deleteRevenue}
+            onReorder={reorderRevenue}
             totalMonthly={totalMonthlyRevenue}
           />
           <FixedExpensesSection
@@ -101,6 +132,7 @@ export default function DataPage() {
             onAdd={addFixedExpense}
             onUpdate={updateFixedExpense}
             onDelete={deleteFixedExpense}
+            onReorder={reorderFixedExpense}
             total={totalFixedExpenses}
             categorySuggestions={categorySuggestions}
           />
@@ -113,6 +145,7 @@ export default function DataPage() {
             onAdd={addAnnexBudget}
             onUpdate={updateAnnexBudget}
             onDelete={deleteAnnexBudget}
+            onReorder={reorderAnnexBudget}
             total={totalAnnexBudgets}
             categorySuggestions={categorySuggestions}
           />
@@ -125,6 +158,7 @@ export default function DataPage() {
             onAdd={addRentalProperty}
             onUpdate={updateRentalProperty}
             onDelete={deleteRentalProperty}
+            onReorder={reorderRentalProperty}
             calculateNetResult={calculateRentalNetResult}
             totalNetResult={totalRentalNetResult}
           />

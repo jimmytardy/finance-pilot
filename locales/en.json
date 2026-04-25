@@ -19,6 +19,9 @@
   "common": {
     "add": "Add",
     "save": "Save",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "dragToReorder": "Drag to reorder",
     "monthly": "Monthly",
     "annual": "Annual",
     "frequency": "Frequency",
@@ -341,6 +344,9 @@
   "dataPage": {
     "title": "Data entry",
     "subtitle": "Enter your income, spending, rental properties, and investments.",
+    "liveRevenue": "Monthly income",
+    "liveOutflows": "Monthly outflows",
+    "liveNet": "Monthly net result",
     "footer": "Without an account, your draft lives in the browser session. Sign in with Google to save to the server via “Projects”. JSON export/import below."
   },
   "dataJson": {

@@ -36,7 +36,13 @@ export function SimulatorAuthMenu() {
 
   if (!session) {
     return (
-      <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => void signIn('google')}>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="gap-2"
+        onClick={() => void signIn('google', { callbackUrl: '/simulateur/donnees' })}
+      >
         <LogIn className="h-4 w-4 shrink-0" aria-hidden />
         <span className="hidden sm:inline">{t('auth.signInGoogle')}</span>
         <span className="sm:hidden">Google</span>

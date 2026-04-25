@@ -1,6 +1,22 @@
 'use client'
 
 import { useState } from 'react'
+import { CSS } from '@dnd-kit/utilities'
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
 import { useTranslation } from 'react-i18next'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -8,7 +24,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus, Pencil, Trash2, Wallet } from 'lucide-react'
+import { GripVertical, Plus, Pencil, Trash2, Wallet } from 'lucide-react'
 import type { AnnexBudget, ExpenseSchedule } from '@/lib/types'
 import { formatCurrencyAmount } from '@/lib/i18n/locale'
 import { ScheduleEditor } from '@/components/dashboard/schedule-editor'
@@ -18,8 +34,84 @@ interface AnnexBudgetSectionProps {
   onAdd: (budget: Omit<AnnexBudget, 'id'>) => void
   onUpdate: (id: string, updates: Partial<AnnexBudget>) => void
   onDelete: (id: string) => void
+  onReorder: (activeId: string, overId: string) => void
   total: number
   categorySuggestions?: string[]
+}
+
+function SortableAnnexBudgetRow({
+  budget,
+  onEdit,
+  onDelete,
+  formatCurrency,
+  getMonthlyAmount,
+}: {
+  budget: AnnexBudget
+  onEdit: (row: AnnexBudget) => void
+  onDelete: (id: string) => void
+  formatCurrency: (n: number) => string
+  getMonthlyAmount: (row: AnnexBudget) => number
+}) {
+  const { t } = useTranslation()
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: budget.id })
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center justify-between rounded-lg bg-secondary/50 p-3 ${isDragging ? 'opacity-70' : ''}`}
+    >
+      <div className="flex min-w-0 items-start gap-2">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="mt-0.5 h-8 w-8 shrink-0 cursor-grab active:cursor-grabbing"
+          title={t('common.dragToReorder')}
+          aria-label={t('common.dragToReorder')}
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="h-4 w-4" />
+        </Button>
+        <div className="flex min-w-0 flex-col">
+          <span className="truncate font-medium">{budget.label}</span>
+          <span className="text-xs text-muted-foreground">
+            {budget.frequency === 'annual' ? t('common.annual') : t('common.monthly')}
+            {budget.frequency === 'annual' && (
+              <span className="ml-1">({formatCurrency(getMonthlyAmount(budget))}{t('common.perMonth')})</span>
+            )}
+            {budget.schedule && (
+              <span className="mt-0.5 block text-[11px] text-primary/90">
+                {budget.schedule.category} ·{' '}
+                {budget.schedule.paymentMode === 'manual' ? t('schedule.manualShort') : t('schedule.autoShort')} ·{' '}
+                {t('schedule.dayOfMonthShort', { day: budget.schedule.dayOfMonth })}
+              </span>
+            )}
+          </span>
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="font-mono font-medium text-chart-3">{formatCurrency(budget.amount)}</span>
+        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(budget)}>
+          <Pencil className="h-4 w-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-destructive hover:text-destructive"
+          onClick={() => onDelete(budget.id)}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  )
 }
 
 export function AnnexBudgetSection({
@@ -27,6 +119,7 @@ export function AnnexBudgetSection({
   onAdd,
   onUpdate,
   onDelete,
+  onReorder,
   total,
   categorySuggestions = [],
 }: AnnexBudgetSectionProps) {
@@ -90,6 +183,17 @@ export function AnnexBudgetSection({
 
   const getMonthlyAmount = (budget: AnnexBudget) => {
     return budget.frequency === 'annual' ? budget.amount / 12 : budget.amount
+  }
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    onReorder(String(active.id), String(over.id))
   }
 
   return (
@@ -171,47 +275,22 @@ export function AnnexBudgetSection({
             {t('annexBudget.empty')}
           </p>
         ) : (
-          <div className="flex flex-col gap-3">
-            {budgets.map((budget) => (
-              <div
-                key={budget.id}
-                className="flex items-center justify-between p-3 rounded-lg bg-secondary/50"
-              >
-                <div className="flex flex-col">
-                  <span className="font-medium">{budget.label}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {budget.frequency === 'annual' ? t('common.annual') : t('common.monthly')}
-                    {budget.frequency === 'annual' && (
-                      <span className="ml-1">({formatCurrency(getMonthlyAmount(budget))}{t('common.perMonth')})</span>
-                    )}
-                    {budget.schedule && (
-                      <span className="mt-0.5 block text-[11px] text-primary/90">
-                        {budget.schedule.category} ·{' '}
-                        {budget.schedule.paymentMode === 'manual' ? t('schedule.manualShort') : t('schedule.autoShort')}{' '}
-                        · {t('schedule.dayOfMonthShort', { day: budget.schedule.dayOfMonth })}
-                      </span>
-                    )}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono font-medium text-chart-3">
-                    {formatCurrency(budget.amount)}
-                  </span>
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEdit(budget)}>
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-destructive hover:text-destructive"
-                    onClick={() => onDelete(budget.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={budgets.map((b) => b.id)} strategy={verticalListSortingStrategy}>
+              <div className="flex flex-col gap-3">
+                {budgets.map((budget) => (
+                  <SortableAnnexBudgetRow
+                    key={budget.id}
+                    budget={budget}
+                    onEdit={startEdit}
+                    onDelete={onDelete}
+                    formatCurrency={formatCurrency}
+                    getMonthlyAmount={getMonthlyAmount}
+                  />
+                ))}
               </div>
-            ))}
-          </div>
+            </SortableContext>
+          </DndContext>
         )}
       </CardContent>
     </Card>

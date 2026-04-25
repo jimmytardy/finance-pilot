@@ -1,6 +1,22 @@
 'use client'
 
 import { useState } from 'react'
+import { CSS } from '@dnd-kit/utilities'
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
 import { useTranslation } from 'react-i18next'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -8,7 +24,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus, Pencil, Trash2, Home, TrendingUp, TrendingDown } from 'lucide-react'
+import { GripVertical, Plus, Pencil, Trash2, Home, TrendingUp, TrendingDown } from 'lucide-react'
 import type {
   RentalProperty,
   Frequency,
@@ -25,6 +41,7 @@ interface RentalPropertySectionProps {
   onAdd: (property: Omit<RentalProperty, 'id'>) => void
   onUpdate: (id: string, updates: Partial<RentalProperty>) => void
   onDelete: (id: string) => void
+  onReorder: (activeId: string, overId: string) => void
   calculateNetResult: (property: RentalProperty) => number
   totalNetResult: number
 }
@@ -180,11 +197,186 @@ function RentalExpenseField({
   )
 }
 
+type RentalPropertyDetails = {
+  monthlyCondoFees: number
+  monthlyTax: number
+  monthlyHomeInsurance: number
+  monthlyBorrowerInsurance: number
+  monthlyOtherInsurance: number
+  totalInsurance: number
+  monthlyLoanPayment: number
+  maintenanceAmount: number
+  additionalMonthly: number
+  additionalBreakdown: { id: string; label: string; monthly: number; type: 'fixed' | 'percentage' }[]
+  netResult: number
+  totalCosts: number
+}
+
+function SortableRentalCard({
+  property,
+  details,
+  addressText,
+  onEdit,
+  onDelete,
+  formatCurrency,
+}: {
+  property: RentalProperty
+  details: RentalPropertyDetails
+  addressText: string | null
+  onEdit: (row: RentalProperty) => void
+  onDelete: (id: string) => void
+  formatCurrency: (n: number) => string
+}) {
+  const { t } = useTranslation()
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: property.id })
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`space-y-4 rounded-lg bg-secondary/50 p-4 ${isDragging ? 'opacity-70' : ''}`}
+    >
+      <div className="flex items-start justify-between">
+        <div className="flex min-w-0 items-start gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="mt-0.5 h-8 w-8 shrink-0 cursor-grab active:cursor-grabbing"
+            title={t('common.dragToReorder')}
+            aria-label={t('common.dragToReorder')}
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="h-4 w-4" />
+          </Button>
+          <div className="min-w-0">
+            <h4 className="truncate font-semibold">{property.name}</h4>
+            {addressText && (
+              <p className="mt-0.5 whitespace-pre-line text-sm text-muted-foreground">{addressText}</p>
+            )}
+            <p className="mt-1 text-sm text-muted-foreground">
+              {t('rental.rentLabel', { amount: formatCurrency(property.monthlyRent) })}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1">
+          <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(property)}>
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-destructive hover:text-destructive"
+            onClick={() => onDelete(property.id)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-3">
+        <div className="flex flex-col">
+          <span className="text-muted-foreground">{t('rental.detailCondo')}</span>
+          <span className="font-mono">
+            {formatCurrency(details.monthlyCondoFees)}
+            {t('common.perMonth')}
+          </span>
+        </div>
+        <div className="flex flex-col">
+          <span className="text-muted-foreground">{t('rental.detailTax')}</span>
+          <span className="font-mono">
+            {formatCurrency(details.monthlyTax)}
+            {t('common.perMonth')}
+          </span>
+        </div>
+        <div className="flex flex-col">
+          <span className="text-muted-foreground">{t('rental.detailInsurance')}</span>
+          <span className="font-mono">
+            {formatCurrency(details.totalInsurance)}
+            {t('common.perMonth')}
+          </span>
+        </div>
+        <div className="flex flex-col">
+          <span className="text-muted-foreground">{t('rental.detailLoan')}</span>
+          <span className="font-mono">
+            {formatCurrency(details.monthlyLoanPayment)}
+            {t('common.perMonth')}
+          </span>
+        </div>
+        <div className="flex flex-col">
+          <span className="text-muted-foreground">{t('rental.detailMaintenance')}</span>
+          <span className="font-mono">
+            {formatCurrency(details.maintenanceAmount)}
+            {t('common.perMonth')}
+          </span>
+        </div>
+        <div className="flex flex-col">
+          <span className="text-muted-foreground">{t('rental.detailOther')}</span>
+          <span className="font-mono">
+            {formatCurrency(details.additionalMonthly)}
+            {t('common.perMonth')}
+          </span>
+        </div>
+        <div className="flex flex-col">
+          <span className="text-muted-foreground">{t('rental.detailTotalCharges')}</span>
+          <span className="font-mono text-destructive">
+            {formatCurrency(details.totalCosts)}
+            {t('common.perMonth')}
+          </span>
+        </div>
+      </div>
+
+      {details.additionalBreakdown.length > 0 && (
+        <div className="rounded-md border border-border/60 bg-background/50 px-3 py-2 text-xs">
+          <p className="mb-1.5 font-medium text-muted-foreground">{t('rental.additionalDetailTitle')}</p>
+          <ul className="space-y-1">
+            {details.additionalBreakdown.map((row) => (
+              <li key={row.id} className="flex justify-between gap-2">
+                <span className="truncate text-muted-foreground">{row.label}</span>
+                <span className="shrink-0 font-mono">
+                  {formatCurrency(row.monthly)}
+                  {t('common.perMonth')}
+                  {row.type === 'percentage' && (
+                    <span className="text-muted-foreground"> {t('rental.rentPctTag')}</span>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="border-t border-border pt-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {details.netResult >= 0 ? (
+              <TrendingUp className="h-4 w-4 text-primary" />
+            ) : (
+              <TrendingDown className="h-4 w-4 text-destructive" />
+            )}
+            <span className="text-sm font-medium">{t('rental.netMonthlyResult')}</span>
+          </div>
+          <span className={`font-mono font-bold ${details.netResult >= 0 ? 'text-primary' : 'text-destructive'}`}>
+            {formatCurrency(details.netResult)}
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function RentalPropertySection({
   properties,
   onAdd,
   onUpdate,
   onDelete,
+  onReorder,
   calculateNetResult,
   totalNetResult,
 }: RentalPropertySectionProps) {
@@ -209,6 +401,17 @@ export function RentalPropertySection({
 
   const toMonthly = (expense: RentalPropertyExpense) => {
     return expense.frequency === 'annual' ? expense.amount / 12 : expense.amount
+  }
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    onReorder(String(active.id), String(over.id))
   }
 
   const handleSubmit = () => {
@@ -310,7 +513,7 @@ export function RentalPropertySection({
     setIsAddOpen(true)
   }
 
-  const getPropertyDetails = (property: RentalProperty) => {
+  const getPropertyDetails = (property: RentalProperty): RentalPropertyDetails => {
     const monthlyCondoFees = toMonthly(property.condoFees)
     const monthlyTax = toMonthly(property.propertyTax)
     const monthlyHomeInsurance = toMonthly(property.homeInsurance)
@@ -580,128 +783,25 @@ export function RentalPropertySection({
           </p>
         ) : (
           <div className="flex flex-col gap-4">
-            {properties.map((property) => {
-              const details = getPropertyDetails(property)
-              const addressText = formatAddressForDisplay(property.address)
-              return (
-                <div key={property.id} className="p-4 rounded-lg bg-secondary/50 space-y-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h4 className="font-semibold">{property.name}</h4>
-                      {addressText && (
-                        <p className="text-sm text-muted-foreground mt-0.5 whitespace-pre-line">
-                          {addressText}
-                        </p>
-                      )}
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {t('rental.rentLabel', { amount: formatCurrency(property.monthlyRent) })}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEdit(property)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive hover:text-destructive"
-                        onClick={() => onDelete(property.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-                    <div className="flex flex-col">
-                      <span className="text-muted-foreground">{t('rental.detailCondo')}</span>
-                      <span className="font-mono">
-                        {formatCurrency(details.monthlyCondoFees)}
-                        {t('common.perMonth')}
-                      </span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-muted-foreground">{t('rental.detailTax')}</span>
-                      <span className="font-mono">
-                        {formatCurrency(details.monthlyTax)}
-                        {t('common.perMonth')}
-                      </span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-muted-foreground">{t('rental.detailInsurance')}</span>
-                      <span className="font-mono">
-                        {formatCurrency(details.totalInsurance)}
-                        {t('common.perMonth')}
-                      </span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-muted-foreground">{t('rental.detailLoan')}</span>
-                      <span className="font-mono">
-                        {formatCurrency(details.monthlyLoanPayment)}
-                        {t('common.perMonth')}
-                      </span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-muted-foreground">{t('rental.detailMaintenance')}</span>
-                      <span className="font-mono">
-                        {formatCurrency(details.maintenanceAmount)}
-                        {t('common.perMonth')}
-                      </span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-muted-foreground">{t('rental.detailOther')}</span>
-                      <span className="font-mono">
-                        {formatCurrency(details.additionalMonthly)}
-                        {t('common.perMonth')}
-                      </span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-muted-foreground">{t('rental.detailTotalCharges')}</span>
-                      <span className="font-mono text-destructive">
-                        {formatCurrency(details.totalCosts)}
-                        {t('common.perMonth')}
-                      </span>
-                    </div>
-                  </div>
-
-                  {details.additionalBreakdown.length > 0 && (
-                    <div className="rounded-md border border-border/60 bg-background/50 px-3 py-2 text-xs">
-                      <p className="font-medium text-muted-foreground mb-1.5">{t('rental.additionalDetailTitle')}</p>
-                      <ul className="space-y-1">
-                        {details.additionalBreakdown.map((row) => (
-                          <li key={row.id} className="flex justify-between gap-2">
-                            <span className="truncate text-muted-foreground">{row.label}</span>
-                            <span className="shrink-0 font-mono">
-                              {formatCurrency(row.monthly)}
-                              {t('common.perMonth')}
-                              {row.type === 'percentage' && (
-                                <span className="text-muted-foreground"> {t('rental.rentPctTag')}</span>
-                              )}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  <div className="pt-3 border-t border-border">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        {details.netResult >= 0 ? (
-                          <TrendingUp className="h-4 w-4 text-primary" />
-                        ) : (
-                          <TrendingDown className="h-4 w-4 text-destructive" />
-                        )}
-                        <span className="text-sm font-medium">{t('rental.netMonthlyResult')}</span>
-                      </div>
-                      <span className={`font-mono font-bold ${details.netResult >= 0 ? 'text-primary' : 'text-destructive'}`}>
-                        {formatCurrency(details.netResult)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={properties.map((p) => p.id)} strategy={verticalListSortingStrategy}>
+                {properties.map((property) => {
+                  const details = getPropertyDetails(property)
+                  const addressText = formatAddressForDisplay(property.address)
+                  return (
+                    <SortableRentalCard
+                      key={property.id}
+                      property={property}
+                      details={details}
+                      addressText={addressText}
+                      onEdit={startEdit}
+                      onDelete={onDelete}
+                      formatCurrency={formatCurrency}
+                    />
+                  )
+                })}
+              </SortableContext>
+            </DndContext>
 
             {properties.length > 1 && (
               <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">

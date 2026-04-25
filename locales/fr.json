@@ -19,6 +19,9 @@
   "common": {
     "add": "Ajouter",
     "save": "Enregistrer",
+    "moveUp": "Monter",
+    "moveDown": "Descendre",
+    "dragToReorder": "Glisser pour réorganiser",
     "monthly": "Mensuel",
     "annual": "Annuel",
     "frequency": "Fréquence",
@@ -341,6 +344,9 @@
   "dataPage": {
     "title": "Saisie des données",
     "subtitle": "Configurez vos revenus, vos dépenses, vos biens locatifs et vos investissements.",
+    "liveRevenue": "Revenus mensuels",
+    "liveOutflows": "Sorties mensuelles",
+    "liveNet": "Résultat net mensuel",
     "footer": "Sans compte, le brouillon vit dans la session du navigateur. Connectez-vous avec Google pour enregistrer sur le serveur via « Projets ». Export / import JSON ci-dessous."
   },
   "dataJson": {
