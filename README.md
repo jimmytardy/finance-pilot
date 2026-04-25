@@ -17,6 +17,7 @@ Le simulateur est **utilisable sans compte** (données en session navigateur). A
 - [Authentification (NextAuth + Google)](#authentification-nextauth--google)
 - [Analytics (Matomo)](#analytics-matomo)
 - [Développement](#développement)
+- [Docker](#docker)
 - [Production (build, PM2, nginx)](#production-build-pm2-nginx)
 - [Persistance des données](#persistance-des-données)
 - [Architecture et dossiers](#architecture-et-dossiers)
@@ -168,6 +169,67 @@ Si `NEXT_PUBLIC_MATOMO_URL` (URL de base valide **http/https**) et `NEXT_PUBLIC_
 | `pnpm lint` | ESLint sur le dépôt. |
 | `pnpm db:push` | Applique le schéma Prisma sur la base (`prisma db push`). |
 | `pnpm db:migrate` | Migrations interactives (`prisma migrate dev`). |
+
+---
+
+## Docker
+
+Le dépôt fournit un **`Dockerfile`** (build multi-étapes Next.js **standalone** + Prisma) et un **`docker-compose.yml`** qui ne lance que le service **`app`**. Il **n’embarque pas** PostgreSQL : l’application se connecte à une base **déjà disponible** sur le réseau Docker externe **`postgres_network`** (host **`postgres`**, port **5432**, utilisateur typique **`admin`**), comme sur le VPS décrit dans **`.cursor/rules/infrastructure-vps.mdc`**.
+
+### Prérequis
+
+- **Docker** et **Docker Compose** (plugin `docker compose`).
+- Le réseau **`postgres_network`** doit exister :
+
+  ```bash
+  docker network create postgres_network
+  ```
+
+- Une instance **PostgreSQL** joignable depuis ce réseau sous le nom **`postgres`**, avec une base (par défaut **`finance_pilot`**) et les droits pour l’utilisateur configuré.
+
+### Variables d’environnement
+
+À la racine du projet, copiez le modèle puis complétez au minimum la connexion à la base et les secrets NextAuth :
+
+```bash
+cp .env.example .env
+```
+
+Pour **`docker compose`**, vous pouvez soit définir une **`DATABASE_URL`** complète dans **`.env`** (prioritaire dans le compose), soit laisser le compose construire l’URL à partir de **`POSTGRES_PASSWORD`** (obligatoire dans ce cas), avec **`POSTGRES_USER`** (défaut `admin`) et **`POSTGRES_DB`** (défaut `finance_pilot`). Voir aussi les commentaires dans **`.env.example`**.
+
+Pensez à aligner **`NEXTAUTH_URL`** sur l’URL réellement utilisée par le navigateur (local ou domaine derrière **Nginx Proxy Manager**).
+
+### Build et démarrage
+
+```bash
+docker compose up --build -d
+```
+
+L’application écoute sur le port **3000** du conteneur, publié sur l’hôte en **`${APP_PORT:-3000}`** (ex. [http://localhost:3000](http://localhost:3000) si `APP_PORT` n’est pas défini).
+
+Arrêt et suppression des conteneurs du projet :
+
+```bash
+docker compose down
+```
+
+### Schéma Prisma (premier déploiement ou évolution)
+
+Sans service « migrate » dans le compose, les commandes Prisma s’exécutent **dans une tâche one-shot** réutilisant l’image de l’app :
+
+```bash
+# Si vous versionnez des migrations Prisma :
+docker compose run --rm --entrypoint prisma app migrate deploy
+
+# Sinon, alignement du schéma sur la base (comme `pnpm prisma db push`) :
+docker compose run --rm --entrypoint prisma app db push
+```
+
+Optionnel : définir **`RUN_MIGRATIONS_ON_START=true`** dans l’environnement du service **`app`** pour exécuter **`prisma migrate deploy`** au démarrage du conteneur (voir **`docker-entrypoint.sh`**).
+
+### Exposition (VPS)
+
+Sur le serveur, l’app n’a en général **pas** besoin d’exposer le port publiquement : placez un **hôte proxy** (ex. **Nginx Proxy Manager**) devant le port interne du conteneur ou du socket, avec TLS (Certbot / Let’s Encrypt). Les règles d’infra partagée (Keycloak, NPM, etc.) sont détaillées dans **`.cursor/rules/infrastructure-vps.mdc`**.
 
 ---
 

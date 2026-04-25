@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  /** Bundle minimal pour l’image Docker (voir Dockerfile). */
+  output: 'standalone',
   typescript: {
     ignoreBuildErrors: true,
   },

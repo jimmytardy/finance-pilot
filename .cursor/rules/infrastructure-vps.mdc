@@ -1,0 +1,65 @@
+---
+description: Infra VPS Ubuntu, services centralisés (PostgreSQL, Keycloak, NPM), Docker Compose, pnpm
+alwaysApply: true
+---
+
+# Infrastructure VPS
+
+## Serveur
+
+- OS : Ubuntu 22.04
+- RAM : 4 Go
+- Docker + Docker Compose installés
+- Répertoire des projets partagés : `~/shared-project/`
+
+## Services partagés (`~/shared-project/`)
+
+### PostgreSQL (`~/shared-project/postgres/`)
+
+- PostgreSQL centralisé, commun à tous les projets
+- Réseau Docker partagé : `postgres_network` (`external: true`)
+- Host à utiliser dans les docker-compose : `postgres`
+- Port : 5432
+- User : `admin`
+
+### Keycloak (`~/shared-project/keycloak/`)
+
+- Instance Keycloak centralisée, commune à tous les projets
+- Accessible sur : https://auth.jimmy-tardy-informatique.fr
+- Connecté au réseau `postgres_network`
+- Base de données : `keycloak` (sur le PostgreSQL partagé)
+- Utiliser Keycloak pour toute la gestion d'authentification (ne pas réimplémenter d'auth)
+
+### Nginx Proxy Manager (`~/shared-project/nginx/`)
+
+- Reverse proxy centralisé pour tous les projets
+- Interface admin sur le port 81
+- Certificats SSL gérés via Certbot / Let's Encrypt
+- Domaine principal : jimmy-tardy-informatique.fr
+- Tous les nouveaux services doivent être exposés via Nginx Proxy Manager
+
+## Règles pour les docker-compose
+
+- Ne pas inclure de service PostgreSQL dans les projets (déjà centralisé)
+- Ne pas inclure de service Keycloak dans les projets (déjà centralisé)
+- Ne pas inclure de service Nginx dans les projets (déjà centralisé via Nginx Proxy Manager)
+- Toujours déclarer le réseau externe `postgres_network` pour accéder à la BDD
+- Ne jamais inclure la ligne `version:` (obsolète avec Docker Compose récent)
+- Utiliser `restart: unless-stopped` sur tous les services
+- Privilégier des images Docker légères (alpine quand disponible)
+
+## Développement
+
+- Gestionnaire de paquets : **pnpm** (ne jamais utiliser npm ou yarn)
+- Certificats SSL : Certbot / Let's Encrypt
+
+## Contraintes
+
+- VPS limité à 4 Go de RAM, éviter les solutions trop lourdes
+- Pas de Kubernetes, pas de Swarm
+
+## Référence — ce dépôt (Docker / Prisma)
+
+- Exemple `DATABASE_URL` sur le réseau partagé : `postgresql://admin:MOT_DE_PASSE@postgres:5432/finance_pilot?schema=public`
+- Migrations sans service dédié : `docker compose run --rm --entrypoint prisma app migrate deploy` ou `… app db push`
+- Next.js + Prisma : si Alpine pose problème avec les engines, **`node:*-bookworm-slim`** et sortie **`output: 'standalone'`** restent acceptables pour limiter RAM et fiabilité
