@@ -205,7 +205,11 @@ Pensez à aligner **`NEXTAUTH_URL`** sur l’URL réellement utilisée par le na
 docker compose up --build -d
 ```
 
-L’application écoute sur le port **3000** du conteneur, publié sur l’hôte en **`${APP_PORT:-3000}`** (ex. [http://localhost:3000](http://localhost:3000) si `APP_PORT` n’est pas défini).
+Le **`docker-compose.yml`** ne publie **aucun port** : sur le VPS, l’exposition se fait via **Nginx Proxy Manager** (ou un autre compose / `docker run -p …`) en pointant vers le conteneur sur le réseau Docker partagé. En local, pour tester dans le navigateur, ajoutez par exemple **`ports: ["3000:3000"]`** dans un fichier **`docker-compose.override.yml`** (non versionné) ou passez par la même stack proxy.
+
+Next.js utilise la variable **`PORT`** si elle est définie par l’orchestrateur ; sinon le défaut interne est **3000** (écoute sur **`HOSTNAME`** déjà fixé à **`0.0.0.0`** dans l’image).
+
+Le **Dockerfile** installe les dépendances avec **pnpm** et **`pnpm-lock.yaml`** uniquement dans les premières couches (**`pnpm fetch`** puis **`pnpm install --offline`**), puis copie le code dans l’étape **builder** : tant que le lockfile et **`prisma/`** sont stables, la couche des dépendances reste en cache même si le reste du code change.
 
 Arrêt et suppression des conteneurs du projet :
 

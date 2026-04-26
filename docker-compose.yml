@@ -13,8 +13,6 @@ services:
         NEXT_PUBLIC_MATOMO_SITE_ID: ${NEXT_PUBLIC_MATOMO_SITE_ID:-}
         NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${NEXT_PUBLIC_GOOGLE_CLIENT_ID:-}
     restart: unless-stopped
-    ports:
-      - "${APP_PORT:-3000}:3000"
     environment:
       # PostgreSQL centralisé : host `postgres`, user typique `admin`. Surcharge : définir DATABASE_URL dans `.env` à la racine.
       DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-finance_pilot}?schema=public}

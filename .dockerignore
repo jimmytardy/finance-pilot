@@ -15,3 +15,6 @@ terminals
 .idea
 coverage
 *.log
+.pnpm-store
+
+# Ne pas ignorer : package.json, pnpm-lock.yaml (nécessaires au Dockerfile).
