@@ -7,6 +7,9 @@ import { getMatomoPublicConfig, getServerEnv } from '@/lib/env'
 import { isGoogleOAuthConfiguredServer } from '@/lib/server-auth-config'
 import './globals.css'
 
+/** Lit GOOGLE_* à l’exécution (après `next start`), pas seulement au `next build`. */
+export const dynamic = 'force-dynamic'
+
 function rootMetadataBase(): URL | undefined {
   try {
     const raw = getServerEnv().NEXT_PUBLIC_APP_URL?.trim()

@@ -1,16 +1,14 @@
 'use client'
 
-import { signIn, useSession } from 'next-auth/react'
+import { useSession } from 'next-auth/react'
 import { useTranslation } from 'react-i18next'
-import { Cloud, CloudOff, Settings2 } from 'lucide-react'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Button } from '@/components/ui/button'
+import { Cloud, Settings2 } from 'lucide-react'
 import { isGoogleAuthConfiguredPublic } from '@/lib/auth-public'
 import { useSimulatorServerGoogleOAuthConfigured } from '@/contexts/simulator-server-auth-context'
 
 export function SimulatorPersistenceBanner() {
   const { t } = useTranslation()
-  const { data: session, status } = useSession()
+  const { status } = useSession()
   const googleOnServer = useSimulatorServerGoogleOAuthConfigured()
   const googlePublic = isGoogleAuthConfiguredPublic()
   const oauthUsable = googleOnServer || googlePublic
@@ -30,27 +28,12 @@ export function SimulatorPersistenceBanner() {
     )
   }
 
-  if (session) {
-    return (
-      <div className="border-b border-border bg-primary/5">
-        <div className="mx-auto flex max-w-7xl items-center gap-2 px-4 py-2 sm:px-5 md:px-6">
-          <Cloud className="size-4 shrink-0 text-primary" aria-hidden />
-          <p className="text-xs text-muted-foreground sm:text-sm">{t('auth.bannerSynced')}</p>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <Alert className="rounded-none border-x-0 border-t-0 border-b border-primary/20 bg-muted/40 py-3 sm:py-3.5">
-      <CloudOff className="text-primary" aria-hidden />
-      <AlertTitle className="text-sm sm:text-base">{t('auth.bannerGuestTitle')}</AlertTitle>
-      <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-        <span className="text-pretty">{t('auth.bannerGuestDescription')}</span>
-        <Button type="button" size="sm" className="shrink-0 gap-2 self-start sm:self-center" onClick={() => void signIn('google')}>
-          {t('auth.signInGoogle')}
-        </Button>
-      </AlertDescription>
-    </Alert>
+    <div className="border-b border-border bg-primary/5">
+      <div className="mx-auto flex max-w-7xl items-center gap-2 px-4 py-2 sm:px-5 md:px-6">
+        <Cloud className="size-4 shrink-0 text-primary" aria-hidden />
+        <p className="text-xs text-muted-foreground sm:text-sm">{t('auth.bannerSynced')}</p>
+      </div>
+    </div>
   )
 }

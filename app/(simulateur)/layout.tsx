@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react'
-import { Navigation } from '@/components/navigation'
+import { AuthenticatedNavigation } from '@/components/authenticated-navigation'
 import { SimulatorPersistenceBanner } from '@/components/simulator-persistence-banner'
 
 export default function SimulateurLayout({ children }: { children: ReactNode }) {
   return (
     <>
-      <Navigation />
+      <AuthenticatedNavigation />
       <SimulatorPersistenceBanner />
       {children}
     </>

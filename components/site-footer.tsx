@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/lib/utils'
 
 export function SiteFooter() {
   const { t } = useTranslation()
@@ -25,18 +24,8 @@ export function SiteFooter() {
             <p className="text-sm font-semibold text-foreground">{t('siteFooter.navTitle')}</p>
             <ul className="mt-4 flex flex-col gap-3">
               <li>
-                <Link href="/" className={cn(linkClass)}>
-                  {t('siteFooter.linkHome')}
-                </Link>
-              </li>
-              <li>
-                <Link href="/simulateur" className={cn(linkClass)}>
+                <Link href="/donnees" className={linkClass}>
                   {t('siteFooter.linkSimulator')}
-                </Link>
-              </li>
-              <li>
-                <Link href="/#guides" className={cn(linkClass)}>
-                  {t('siteFooter.linkGuides')}
                 </Link>
               </li>
             </ul>
@@ -44,9 +33,6 @@ export function SiteFooter() {
 
           <div className="sm:col-span-2 lg:col-span-1">
             <p className="text-sm font-semibold text-foreground">{t('siteFooter.infoTitle')}</p>
-            <p className="mt-4 max-w-prose text-pretty text-sm leading-relaxed text-muted-foreground">
-              {t('siteFooter.aboutEditorial')}
-            </p>
             <p className="mt-4 max-w-prose text-pretty text-sm leading-relaxed text-muted-foreground">
               {t('siteFooter.privacyLocal')}
             </p>

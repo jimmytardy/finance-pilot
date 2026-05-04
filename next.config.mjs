@@ -8,30 +8,14 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  /**
-   * Réduit le blocage bfcache côté navigateur quand la chaîne ne force pas autrement un no-store.
-   * Les pages dynamiques (headers(), etc.) peuvent toujours imposer d’autres directives en amont (proxy).
-   */
-  async headers() {
-    return [
-      {
-        source: '/',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=0, s-maxage=120, stale-while-revalidate=600',
-          },
-        ],
-      },
-    ]
-  },
   async redirects() {
     return [
-      { source: '/donnees', destination: '/simulateur/donnees', permanent: true },
-      { source: '/gestion-finances', destination: '/simulateur/gestion-mensuel', permanent: true },
-      { source: '/estimations', destination: '/simulateur/estimations', permanent: true },
-      { source: '/comparaison', destination: '/simulateur/comparaison', permanent: true },
-      { source: '/guides', destination: '/#guides', permanent: true },
+      { source: '/', destination: '/donnees', permanent: true },
+      { source: '/simulateur', destination: '/donnees', permanent: true },
+      { source: '/simulateur/:path*', destination: '/:path*', permanent: true },
+      { source: '/guides', destination: '/donnees', permanent: true },
+      { source: '/guides/:path*', destination: '/donnees', permanent: true },
+      { source: '/strategies-patrimoine', destination: '/donnees', permanent: true },
     ]
   },
 }

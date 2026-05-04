@@ -131,13 +131,13 @@ export function SavedProjectsMenu() {
     persistOrphanDraftIfNeeded()
     flushActiveProjectToStore()
     if (id === activeProjectId) {
-      router.push('/simulateur/donnees')
+      router.push('/donnees')
       setOpen(false)
       return
     }
     importFinanceData(project.data)
     setActiveProjectId(project.id)
-    router.push('/simulateur/donnees')
+    router.push('/donnees')
     setOpen(false)
   }
 
@@ -185,7 +185,7 @@ export function SavedProjectsMenu() {
                   type="button"
                   size="sm"
                   className="w-full gap-2 sm:w-auto"
-                  onClick={() => void signIn('google', { callbackUrl: '/simulateur/donnees' })}
+                  onClick={() => void signIn('google', { callbackUrl: '/donnees' })}
                 >
                   {t('auth.signInGoogle')}
                 </Button>

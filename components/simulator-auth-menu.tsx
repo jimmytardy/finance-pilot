@@ -22,7 +22,20 @@ export function SimulatorAuthMenu() {
   const showGoogleAuth = googleOnServer || isGoogleAuthConfiguredPublic()
 
   if (!showGoogleAuth) {
-    return null
+    return (
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="gap-2 opacity-80"
+        disabled
+        title={t('auth.signInUnavailable')}
+      >
+        <LogIn className="h-4 w-4 shrink-0" aria-hidden />
+        <span className="hidden sm:inline">{t('auth.signInGoogle')}</span>
+        <span className="sm:hidden">Google</span>
+      </Button>
+    )
   }
 
   if (status === 'loading') {
@@ -41,7 +54,11 @@ export function SimulatorAuthMenu() {
         variant="outline"
         size="sm"
         className="gap-2"
-        onClick={() => void signIn('google', { callbackUrl: '/simulateur/donnees' })}
+        onClick={() =>
+          void signIn('google', {
+            callbackUrl: typeof window !== 'undefined' ? `${window.location.pathname}${window.location.search}` : '/donnees',
+          })
+        }
       >
         <LogIn className="h-4 w-4 shrink-0" aria-hidden />
         <span className="hidden sm:inline">{t('auth.signInGoogle')}</span>
@@ -75,7 +92,7 @@ export function SimulatorAuthMenu() {
           ) : null}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem variant="destructive" className="gap-2" onClick={() => void signOut()}>
+        <DropdownMenuItem variant="destructive" className="gap-2" onClick={() => void signOut({ callbackUrl: '/connexion' })}>
           <LogOut className="h-4 w-4 shrink-0" aria-hidden />
           {t('auth.signOut')}
         </DropdownMenuItem>
