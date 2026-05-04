@@ -238,10 +238,18 @@ Sans service « migrate » dans le compose, les commandes Prisma s’exécutent 
 docker compose run --rm --entrypoint prisma app migrate deploy
 
 # Sinon, alignement du schéma sur la base (comme `pnpm prisma db push`) :
-docker compose run --rm --entrypoint prisma app db push
+docker compose run --rm --entrypoint prisma app db push --skip-generate
+
+# Sur un conteneur déjà démarré (même effet, sans régénérer le client dans l’image) :
+docker exec finance-pilot prisma db push --skip-generate
 ```
 
-Optionnel : définir **`RUN_MIGRATIONS_ON_START=true`** dans l’environnement du service **`app`** pour exécuter **`prisma migrate deploy`** au démarrage du conteneur (voir **`docker-entrypoint.sh`**).
+Optionnel au démarrage du conteneur (voir **`docker-entrypoint.sh`**) :
+
+- **`RUN_MIGRATIONS_ON_START=true`** — `prisma migrate deploy` (à privilégier si le dépôt contient des migrations versionnées sous `prisma/migrations/`).
+- **`RUN_DB_PUSH_ON_START=true`** — `prisma db push` (schéma sans dossier de migrations : aligne la BDD sur `schema.prisma`, utile pour un premier déploiement si les tables NextAuth n’existent pas encore).
+
+Une fois les tables créées, repasse ces variables à `false` pour éviter d’appliquer le schéma automatiquement à chaque redémarrage.
 
 ### Exposition (VPS)
 

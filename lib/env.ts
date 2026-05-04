@@ -53,9 +53,16 @@ export const canonicalEnvSchema = z.object({
     .string()
     .min(1, 'NEXTAUTH_URL requis')
     .transform((s) => s.trim().replace(/\/+$/, '')),
-  NEXTAUTH_SECRET: z.string().min(1, 'NEXTAUTH_SECRET requis (signature JWT / cookies NextAuth)'),
-  GOOGLE_CLIENT_ID: z.string().min(1, 'GOOGLE_CLIENT_ID requis'),
-  GOOGLE_CLIENT_SECRET: z.string().min(1, 'GOOGLE_CLIENT_SECRET requis'),
+  NEXTAUTH_SECRET: z
+    .preprocess((v) => (typeof v === 'string' ? v.trim() : v), z.string().min(1, 'NEXTAUTH_SECRET requis (signature JWT / cookies NextAuth)')),
+  GOOGLE_CLIENT_ID: z.preprocess(
+    (v) => (typeof v === 'string' ? v.trim() : v),
+    z.string().min(1, 'GOOGLE_CLIENT_ID requis'),
+  ),
+  GOOGLE_CLIENT_SECRET: z.preprocess(
+    (v) => (typeof v === 'string' ? v.trim() : v),
+    z.string().min(1, 'GOOGLE_CLIENT_SECRET requis'),
+  ),
 })
 
 export type CanonicalEnv = z.infer<typeof canonicalEnvSchema>
