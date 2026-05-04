@@ -5,8 +5,9 @@ import { z } from 'zod'
  *
  * Clés autorisées côté applicatif :
  * - NODE_ENV, PORT, HOSTNAME
- * - NEXT_PUBLIC_APP_URL, NEXT_PUBLIC_MATOMO_URL, NEXT_PUBLIC_MATOMO_SITE_ID
- * - DATABASE_URL, NEXTAUTH_URL, NEXTAUTH_SECRET
+ * - NEXTAUTH_URL (URL publique de l’app : OAuth + métadonnées / URL absolues)
+ * - NEXT_PUBLIC_MATOMO_URL, NEXT_PUBLIC_MATOMO_SITE_ID
+ * - DATABASE_URL, NEXTAUTH_SECRET
  * - GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
  *
  * Le code serveur ne doit lire que ces valeurs via `getCanonicalEnv()` (les handlers Edge
@@ -45,7 +46,6 @@ export const canonicalEnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().int().positive().default(3000),
   HOSTNAME: z.string().min(1).default('0.0.0.0'),
-  NEXT_PUBLIC_APP_URL: z.string().min(1, 'NEXT_PUBLIC_APP_URL requis'),
   NEXT_PUBLIC_MATOMO_URL: matomoUrl,
   NEXT_PUBLIC_MATOMO_SITE_ID: matomoSiteId,
   DATABASE_URL: z.string().min(1, 'DATABASE_URL requis'),
@@ -65,7 +65,6 @@ function readCanonicalEnvFromProcess(): unknown {
     NODE_ENV: process.env.NODE_ENV,
     PORT: process.env.PORT,
     HOSTNAME: process.env.HOSTNAME,
-    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NEXT_PUBLIC_MATOMO_URL: process.env.NEXT_PUBLIC_MATOMO_URL,
     NEXT_PUBLIC_MATOMO_SITE_ID: process.env.NEXT_PUBLIC_MATOMO_SITE_ID,
     DATABASE_URL: process.env.DATABASE_URL,
@@ -82,7 +81,6 @@ function stubCanonicalEnvForBuild(): CanonicalEnv {
     NODE_ENV: 'production',
     PORT: 3000,
     HOSTNAME: '0.0.0.0',
-    NEXT_PUBLIC_APP_URL: 'https://build.invalid',
     NEXT_PUBLIC_MATOMO_URL: 'https://build.invalid',
     NEXT_PUBLIC_MATOMO_SITE_ID: '1',
     DATABASE_URL: 'postgresql://build:build@127.0.0.1:5432/build',

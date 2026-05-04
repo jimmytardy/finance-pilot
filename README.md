@@ -107,10 +107,9 @@ L’application ne lit **que** les variables validées dans **`lib/env.ts`** (`g
 | `NODE_ENV` | `development` \| `production` \| `test` |
 | `PORT` | Port d’écoute (défaut `3000`) |
 | `HOSTNAME` | Interface (ex. `0.0.0.0` en Docker) |
-| `NEXT_PUBLIC_APP_URL` | URL publique du site (SEO / métadonnées), sans slash final |
 | `NEXT_PUBLIC_MATOMO_URL` / `NEXT_PUBLIC_MATOMO_SITE_ID` | Matomo ; les **deux** requis pour activer le script, sinon laisser vides pour désactiver |
 | `DATABASE_URL` | PostgreSQL (Prisma + NextAuth) |
-| `NEXTAUTH_URL` | URL publique de l’app (sans slash final), OAuth |
+| `NEXTAUTH_URL` | URL publique de l’app (sans slash final) : OAuth **et** base des URL absolues (métadonnées, sitemap, `robots.txt`) |
 | `NEXTAUTH_SECRET` | Secret NextAuth (**obligatoire au runtime** dans le conteneur ; non figé dans l’image standalone) |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | OAuth Google |
 

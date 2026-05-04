@@ -11,7 +11,7 @@ export function messagesForLocale(locale: AppLocale) {
 
 export function metadataBaseFromEnv(): URL | undefined {
   try {
-    const raw = getCanonicalEnv().NEXT_PUBLIC_APP_URL?.trim()
+    const raw = getCanonicalEnv().NEXTAUTH_URL?.trim()
     if (!raw) return undefined
     return new URL(raw.endsWith('/') ? raw : `${raw}/`)
   } catch {

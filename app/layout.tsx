@@ -11,7 +11,7 @@ import './globals.css'
 export const dynamic = 'force-dynamic'
 
 function rootMetadataBase(): URL | undefined {
-  const raw = getCanonicalEnv().NEXT_PUBLIC_APP_URL?.trim()
+  const raw = getCanonicalEnv().NEXTAUTH_URL?.trim()
   if (!raw) return undefined
   return new URL(raw.endsWith('/') ? raw : `${raw}/`)
 }

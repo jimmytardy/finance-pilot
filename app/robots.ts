@@ -3,7 +3,7 @@ import { getCanonicalEnv } from '@/lib/env'
 
 export default function robots(): MetadataRoute.Robots {
   try {
-    const raw = getCanonicalEnv().NEXT_PUBLIC_APP_URL?.trim()
+    const raw = getCanonicalEnv().NEXTAUTH_URL?.trim()
     let origin: string | undefined
     if (raw) {
       try {
