@@ -9,7 +9,6 @@ import { FinancePilotLogo } from '@/components/finance-pilot-logo'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { isGoogleAuthConfiguredPublic } from '@/lib/auth-public'
 import { useSimulatorServerGoogleOAuthConfigured } from '@/contexts/simulator-server-auth-context'
 
 function safeCallbackUrl(raw: string | null): string {
@@ -22,8 +21,7 @@ function ConnexionContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { status } = useSession()
-  const googleOnServer = useSimulatorServerGoogleOAuthConfigured()
-  const oauthReady = googleOnServer || isGoogleAuthConfiguredPublic()
+  const oauthReady = useSimulatorServerGoogleOAuthConfigured()
 
   const callbackUrl = safeCallbackUrl(searchParams.get('callbackUrl'))
 

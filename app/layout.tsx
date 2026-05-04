@@ -3,7 +3,7 @@ import { Plus_Jakarta_Sans } from 'next/font/google'
 import Script from 'next/script'
 import fr from '@/locales/fr.json'
 import { Providers } from '@/app/providers'
-import { getMatomoPublicConfig, getServerEnv } from '@/lib/env'
+import { getCanonicalEnv, getMatomoPublicConfig } from '@/lib/env'
 import { isGoogleOAuthConfiguredServer } from '@/lib/server-auth-config'
 import './globals.css'
 
@@ -11,13 +11,9 @@ import './globals.css'
 export const dynamic = 'force-dynamic'
 
 function rootMetadataBase(): URL | undefined {
-  try {
-    const raw = getServerEnv().NEXT_PUBLIC_APP_URL?.trim()
-    if (!raw) return undefined
-    return new URL(raw.endsWith('/') ? raw : `${raw}/`)
-  } catch {
-    return undefined
-  }
+  const raw = getCanonicalEnv().NEXT_PUBLIC_APP_URL?.trim()
+  if (!raw) return undefined
+  return new URL(raw.endsWith('/') ? raw : `${raw}/`)
 }
 
 const rootBase = rootMetadataBase()

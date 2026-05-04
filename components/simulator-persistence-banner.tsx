@@ -3,15 +3,12 @@
 import { useSession } from 'next-auth/react'
 import { useTranslation } from 'react-i18next'
 import { Cloud, Settings2 } from 'lucide-react'
-import { isGoogleAuthConfiguredPublic } from '@/lib/auth-public'
 import { useSimulatorServerGoogleOAuthConfigured } from '@/contexts/simulator-server-auth-context'
 
 export function SimulatorPersistenceBanner() {
   const { t } = useTranslation()
   const { status } = useSession()
-  const googleOnServer = useSimulatorServerGoogleOAuthConfigured()
-  const googlePublic = isGoogleAuthConfiguredPublic()
-  const oauthUsable = googleOnServer || googlePublic
+  const oauthUsable = useSimulatorServerGoogleOAuthConfigured()
 
   if (status === 'loading') {
     return null

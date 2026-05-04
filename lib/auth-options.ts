@@ -1,35 +1,27 @@
 /**
  * Backend NextAuth (v4) : Prisma (comptes) + sessions JWT + Google OAuth.
- * Accès aux pages : middleware (`middleware.ts`) ; token JWT vérifié en Edge.
- * Données simulateur : GET/PUT `/api/simulator/state`, réservé aux utilisateurs connectés.
- * Variables : `DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`.
- * Optionnel client : `NEXT_PUBLIC_GOOGLE_CLIENT_ID` pour afficher le bouton Google.
+ * Variables : contrat unique dans `lib/env.ts` (`getCanonicalEnv`).
  */
 import type { NextAuthOptions } from 'next-auth'
 import { decode as jwtDecodeRaw } from 'next-auth/jwt'
 import GoogleProvider from 'next-auth/providers/google'
 import { PrismaAdapter } from '@next-auth/prisma-adapter'
+import { getCanonicalEnv } from '@/lib/env'
 import { prisma } from '@/lib/prisma'
 
-/** Placeholders si les variables manquent : OAuth échouera tant que les vraies clés ne sont pas définies. */
-const googleClientId = process.env.GOOGLE_CLIENT_ID?.trim() || 'unset-google-client-id'
-const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim() || 'unset-google-client-secret'
+const env = getCanonicalEnv()
 
 /**
  * Obligatoire pour chiffrer/déchiffrer le cookie JWT (JWE).
- * Si tu changes NEXTAUTH_SECRET ou que le build n’avait pas la même valeur qu’au runtime,
- * les cookies existants deviennent invalides → erreur `Invalid Compact JWE` : supprime les cookies du site
- * (ex. `next-auth.session-token`) puis reconnecte-toi.
+ * Si le secret change, les cookies existants deviennent invalides → supprimer les cookies du site puis reconnecter.
  */
-const authSecret = process.env.NEXTAUTH_SECRET?.trim()
-
 export const authOptions: NextAuthOptions = {
-  secret: authSecret,
+  secret: env.NEXTAUTH_SECRET,
   adapter: PrismaAdapter(prisma),
   providers: [
     GoogleProvider({
-      clientId: googleClientId,
-      clientSecret: googleClientSecret,
+      clientId: env.GOOGLE_CLIENT_ID,
+      clientSecret: env.GOOGLE_CLIENT_SECRET,
     }),
   ],
   /** JWT : compatible middleware Edge + contrôle d’accès global (sessions DB seules ne fournissent pas de token Edge). */

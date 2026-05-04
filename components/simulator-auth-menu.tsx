@@ -12,14 +12,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { isGoogleAuthConfiguredPublic } from '@/lib/auth-public'
 import { useSimulatorServerGoogleOAuthConfigured } from '@/contexts/simulator-server-auth-context'
 
 export function SimulatorAuthMenu() {
   const { data: session, status } = useSession()
   const { t } = useTranslation()
-  const googleOnServer = useSimulatorServerGoogleOAuthConfigured()
-  const showGoogleAuth = googleOnServer || isGoogleAuthConfiguredPublic()
+  const showGoogleAuth = useSimulatorServerGoogleOAuthConfigured()
 
   if (!showGoogleAuth) {
     return (

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { getToken } from 'next-auth/jwt'
+import { getNextAuthSecret } from '@/lib/nextauth-secret'
 
 /**
  * Accès réservé aux utilisateurs connectés (équivalent à `withAuth` + `authorized: !!token`).
@@ -12,7 +13,7 @@ export async function middleware(request: NextRequest) {
   try {
     token = await getToken({
       req: request,
-      secret: process.env.NEXTAUTH_SECRET,
+      secret: getNextAuthSecret(),
     })
   } catch {
     token = null

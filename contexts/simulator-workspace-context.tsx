@@ -27,7 +27,6 @@ import {
   type SimulatorPersistedBundle,
 } from '@/lib/simulator-payload'
 import { useSimulatorServerGoogleOAuthConfigured } from '@/contexts/simulator-server-auth-context'
-import { isGoogleAuthConfiguredPublic } from '@/lib/auth-public'
 
 function sortProjects(list: SavedProject[]) {
   return [...list].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
@@ -75,8 +74,7 @@ export function SimulatorWorkspaceProvider({ children }: { children: ReactNode }
 
   const authLoading = status === 'loading'
   const persistenceRemote = status === 'authenticated'
-  const googleOnServer = useSimulatorServerGoogleOAuthConfigured()
-  const googleAuthConfigured = googleOnServer || isGoogleAuthConfiguredPublic()
+  const googleAuthConfigured = useSimulatorServerGoogleOAuthConfigured()
 
   useEffect(() => {
     if (status === 'loading') return

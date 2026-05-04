@@ -3,8 +3,8 @@ require('dotenv').config({ path: path.join(__dirname, '.env.production') })
 require('dotenv').config({ path: path.join(__dirname, '.env') })
 
 const nodeEnv = process.env.NODE_ENV || 'production'
-const port = String(process.env.PORT || '3100')
-const hostname = process.env.HOSTNAME || '127.0.0.1'
+const port = String(process.env.PORT || '3000')
+const hostname = process.env.HOSTNAME || '0.0.0.0'
 
 /**
  * PM2 — production (`.env.production` puis `.env`).

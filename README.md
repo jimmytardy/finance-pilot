@@ -100,18 +100,21 @@ La liste complète et les commentaires se trouvent dans :
 - **`.env.example`** — modèle général (développement + documentation des clés).
 - **`config/environments/production.env.example`** — modèle orienté **déploiement** (VM, nginx, PM2).
 
-Variables principales :
+L’application ne lit **que** les variables validées dans **`lib/env.ts`** (`getCanonicalEnv`) :
 
 | Variable | Rôle |
 | -------- | ---- |
-| `DATABASE_URL` | URL PostgreSQL pour Prisma / NextAuth. |
-| `NEXTAUTH_SECRET` | Secret de signature des cookies (ex. `openssl rand -base64 32`). |
-| `NEXTAUTH_URL` | URL publique de l’app (sans slash final), ex. `http://localhost:3000` ou `https://votre-domaine`. |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | OAuth Google côté serveur. |
-| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | Même **client ID** que côté serveur : affichage du bouton de connexion côté client. |
-| `NEXT_PUBLIC_APP_URL` | URL canonique du site (SEO, métadonnées, `metadataBase`). |
-| `NEXT_PUBLIC_MATOMO_URL` / `NEXT_PUBLIC_MATOMO_SITE_ID` | Matomo ; les deux requis pour activer le script. |
-| `NODE_ENV`, `PORT`, `HOSTNAME` | Surtout **production** ; voir `lib/env.ts` et `ecosystem.config.cjs`. |
+| `NODE_ENV` | `development` \| `production` \| `test` |
+| `PORT` | Port d’écoute (défaut `3000`) |
+| `HOSTNAME` | Interface (ex. `0.0.0.0` en Docker) |
+| `NEXT_PUBLIC_APP_URL` | URL publique du site (SEO / métadonnées), sans slash final |
+| `NEXT_PUBLIC_MATOMO_URL` / `NEXT_PUBLIC_MATOMO_SITE_ID` | Matomo ; les **deux** requis pour activer le script, sinon laisser vides pour désactiver |
+| `DATABASE_URL` | PostgreSQL (Prisma + NextAuth) |
+| `NEXTAUTH_URL` | URL publique de l’app (sans slash final), OAuth |
+| `NEXTAUTH_SECRET` | Secret NextAuth (**obligatoire au runtime** dans le conteneur ; non figé dans l’image standalone) |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | OAuth Google |
+
+Le middleware Edge ne lit que **`NEXTAUTH_SECRET`** (via `getNextAuthSecret()`). Lors du **`pnpm build`** dans le Dockerfile, **`SKIP_ENV_VALIDATION=1`** permet un jeu factice ; l’exécution réelle exige un `.env` / variables complètes.
 
 **Important :** la CLI **Prisma** charge en priorité **`.env`**, pas `.env.local`. Pour `pnpm prisma db push`, exportez `DATABASE_URL` ou dupliquez-la dans `.env`.
 
@@ -147,9 +150,19 @@ En production, préférez `prisma migrate deploy` une fois les migrations géné
 1. [Google Cloud Console](https://console.cloud.google.com/) : créer des identifiants **OAuth client ID** de type **Application Web**.
 2. **URI de redirection autorisée** : `{NEXTAUTH_URL}/api/auth/callback/google` (exemple local : `http://localhost:3000/api/auth/callback/google`).
 3. **Origines JavaScript** : même origine que `NEXTAUTH_URL` (schéma + hôte + port).
-4. Renseigner `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXT_PUBLIC_GOOGLE_CLIENT_ID` et `NEXTAUTH_URL` / `NEXTAUTH_SECRET` dans votre `.env`.
+4. Renseigner `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXTAUTH_URL` et `NEXTAUTH_SECRET` dans votre `.env`.
 
 L’API route handler est dans `app/api/auth/[...nextauth]/route.ts` ; la configuration dans `lib/auth-options.ts`.
+
+### Erreur Google « 400. Il s'agit d'une erreur » (production, Docker, proxy)
+
+Cause la plus fréquente : **`redirect_uri` différent** de ce qui est enregistré chez Google (ou URL en `http` au lieu de `https`).
+
+1. **`NEXTAUTH_URL`** = URL **publique** du site, **https**, **sans slash final** — la même dans l’environnement **effectif** du conteneur (`docker compose … exec app env | grep NEXTAUTH` pour vérifier).
+2. Google Cloud Console → identifiants **OAuth 2.0 (Web)** → **URI de redirection autorisées** : une entrée **exacte** de la forme `https://VOTRE_DOMAINE/api/auth/callback/google` (même domaine, même chemin, pas d’espace en fin de ligne).
+3. **Origines JavaScript autorisées** : `https://VOTRE_DOMAINE` (schéma + hôte, sans chemin).
+4. **Écran de consentement** : en mode *Test*, seuls les comptes ajoutés comme **utilisateurs de test** peuvent se connecter.
+5. **Nginx Proxy Manager** (ou autre reverse proxy) : s’assurer que des en-têtes type `X-Forwarded-Proto` / `X-Forwarded-Host` reflètent bien le **domaine public** (souvent le cas avec Let’s Encrypt).
 
 ---
 

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { getServerEnv } from '@/lib/env'
+import { getCanonicalEnv } from '@/lib/env'
 import fr from '@/locales/fr.json'
 import en from '@/locales/en.json'
 
@@ -10,9 +10,9 @@ export function messagesForLocale(locale: AppLocale) {
 }
 
 export function metadataBaseFromEnv(): URL | undefined {
-  const raw = getServerEnv().NEXT_PUBLIC_APP_URL?.trim()
-  if (!raw) return undefined
   try {
+    const raw = getCanonicalEnv().NEXT_PUBLIC_APP_URL?.trim()
+    if (!raw) return undefined
     return new URL(raw.endsWith('/') ? raw : `${raw}/`)
   } catch {
     return undefined
