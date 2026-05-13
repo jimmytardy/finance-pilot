@@ -1,8 +1,11 @@
+/** Revenus / charges fixes / budgets annexes : mensuel, trimestriel ou annuel. */
+export type CashflowFrequency = 'monthly' | 'quarterly' | 'annual'
+
 export interface Revenue {
   id: string
   label: string
   amount: number
-  frequency: 'monthly' | 'annual'
+  frequency: CashflowFrequency
 }
 
 /** Planification mensuelle (charges fixes & budgets annexes) pour le suivi avancé. */
@@ -10,7 +13,7 @@ export interface ExpenseSchedule {
   category: string
   /** Manuel = virement / paiement à faire ; automatique = prélèvement à date. */
   paymentMode: 'manual' | 'automatic'
-  /** Jour du mois prévu (1–31 ; adapté au nombre de jours du mois à l’usage). */
+  /** Jour du mois prévu (1–31 ; adapté au nombre de jours du mois à l’usage). Vide ou invalide → 1 à l’enregistrement. */
   dayOfMonth: number
 }
 
@@ -18,7 +21,7 @@ export interface FixedExpense {
   id: string
   label: string
   amount: number
-  frequency: 'monthly' | 'annual'
+  frequency: CashflowFrequency
   schedule?: ExpenseSchedule
 }
 
@@ -26,7 +29,7 @@ export interface AnnexBudget {
   id: string
   label: string
   amount: number
-  frequency: 'monthly' | 'annual'
+  frequency: CashflowFrequency
   schedule?: ExpenseSchedule
 }
 

@@ -32,7 +32,12 @@ function formatProjectDate(iso: string, lng: string) {
   }
 }
 
-export function SavedProjectsMenu() {
+export function SavedProjectsMenu({
+  variant = 'toolbar',
+}: {
+  /** `sidebar` : pleine largeur dans la barre latérale Finances ; `toolbar` : bouton compact (barre du haut). */
+  variant?: 'toolbar' | 'sidebar'
+}) {
   const { t, i18n } = useTranslation()
   const router = useRouter()
   const { data, isLoaded: financeLoaded, importFinanceData, startNewDraft } = useFinanceData()
@@ -94,7 +99,8 @@ export function SavedProjectsMenu() {
       ? structuredClone(getLocalizedExampleFinanceData(i18n.language))
       : data
     const id = addProject(name, snapshot)
-    if (id) setActiveProjectId(id)
+    if (!id) return
+    setActiveProjectId(id)
     setNewName('')
   }
 
@@ -154,16 +160,28 @@ export function SavedProjectsMenu() {
     setOpen(false)
   }
 
+  const isSidebar = variant === 'sidebar'
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2" disabled={!ready}>
-          {!ready ? <Loader2 className="h-4 w-4 animate-spin" /> : <FolderOpen className="h-4 w-4" />}
+        <Button
+          variant="outline"
+          size="sm"
+          className={
+            isSidebar
+              ? 'h-auto min-h-10 w-full justify-start gap-2 py-2.5 text-sm font-medium'
+              : 'gap-2'
+          }
+          disabled={!ready}
+        >
+          {!ready ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : <FolderOpen className="h-4 w-4 shrink-0" />}
           {t('navigation.projects')}
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        align="end"
+        align={isSidebar ? 'start' : 'end'}
+        side={isSidebar ? 'right' : 'bottom'}
         collisionPadding={12}
         className="flex max-h-[min(85dvh,28rem)] min-h-0 w-[min(100vw-2rem,22rem)] flex-col overflow-hidden p-0"
       >

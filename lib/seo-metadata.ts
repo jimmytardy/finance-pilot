@@ -22,8 +22,12 @@ export function metadataBaseFromEnv(): URL | undefined {
 const ROUTE_PATHS = {
   donnees: '/donnees',
   gestionFinances: '/gestion-mensuel',
+  gestionAnnuelle: '/gestion-annuelle',
   estimations: '/estimations',
   comparaison: '/comparaison',
+  salaireSaisie: '/salaires/saisie',
+  salaireRecapitulatif: '/salaires/recapitulatif',
+  salaireEntreprises: '/salaires/entreprises',
 } as const
 
 export type RouteSeoKey = keyof typeof ROUTE_PATHS

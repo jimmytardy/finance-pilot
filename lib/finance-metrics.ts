@@ -1,18 +1,19 @@
 import type { FinanceData } from '@/lib/types'
+import { toMonthlyCashflowAmount } from '@/lib/cashflow-frequency'
 import { computeRentalNetMonthly } from '@/lib/rental-net'
 
 /** Agrégats mensuels dérivés des données financières (même logique que le contexte). */
 export function getFinanceMetrics(data: FinanceData) {
   const totalMonthlyRevenue = data.revenues.reduce((sum, r) => {
-    return sum + (r.frequency === 'annual' ? r.amount / 12 : r.amount)
+    return sum + toMonthlyCashflowAmount(r.amount, r.frequency)
   }, 0)
 
   const totalFixedExpenses = data.fixedExpenses.reduce((sum, e) => {
-    return sum + (e.frequency === 'annual' ? e.amount / 12 : e.amount)
+    return sum + toMonthlyCashflowAmount(e.amount, e.frequency)
   }, 0)
 
   const totalAnnexBudgets = data.annexBudgets.reduce((sum, b) => {
-    return sum + (b.frequency === 'annual' ? b.amount / 12 : b.amount)
+    return sum + toMonthlyCashflowAmount(b.amount, b.frequency)
   }, 0)
 
   const totalRentalNetResult = data.rentalProperties.reduce(

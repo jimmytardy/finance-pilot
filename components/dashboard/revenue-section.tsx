@@ -25,7 +25,8 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { GripVertical, Plus, Pencil, Trash2, TrendingUp } from 'lucide-react'
-import type { Revenue } from '@/lib/types'
+import type { CashflowFrequency, Revenue } from '@/lib/types'
+import { toMonthlyCashflowAmount } from '@/lib/cashflow-frequency'
 import { formatCurrencyAmount } from '@/lib/i18n/locale'
 
 interface RevenueSectionProps {
@@ -78,8 +79,13 @@ function SortableRevenueRow({
         <div className="flex min-w-0 flex-col gap-0.5">
           <span className="truncate font-medium">{revenue.label}</span>
           <span className="text-xs text-muted-foreground">
-            {revenue.frequency === 'monthly' ? t('common.monthly') : t('common.annual')}
-            {revenue.frequency === 'annual' && ` (${formatCurrency(getMonthlyAmount(revenue))}${t('common.perMonth')})`}
+            {revenue.frequency === 'monthly'
+              ? t('common.monthly')
+              : revenue.frequency === 'quarterly'
+                ? t('common.quarterly')
+                : t('common.annual')}
+            {revenue.frequency !== 'monthly' &&
+              ` (${formatCurrency(getMonthlyAmount(revenue))}${t('common.perMonth')})`}
           </span>
         </div>
       </div>
@@ -108,13 +114,12 @@ export function RevenueSection({ revenues, onAdd, onUpdate, onDelete, onReorder,
   const [editingId, setEditingId] = useState<string | null>(null)
   const [label, setLabel] = useState('')
   const [amount, setAmount] = useState('')
-  const [frequency, setFrequency] = useState<'monthly' | 'annual'>('monthly')
+  const [frequency, setFrequency] = useState<CashflowFrequency>('monthly')
 
   const formatCurrency = (amount: number) => formatCurrencyAmount(amount, i18n.language)
 
-  const getMonthlyAmount = (revenue: Revenue) => {
-    return revenue.frequency === 'annual' ? revenue.amount / 12 : revenue.amount
-  }
+  const getMonthlyAmount = (revenue: Revenue) =>
+    toMonthlyCashflowAmount(revenue.amount, revenue.frequency)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -210,12 +215,13 @@ export function RevenueSection({ revenues, onAdd, onUpdate, onDelete, onReorder,
               </div>
               <div className="flex flex-col gap-2">
                 <Label htmlFor="revenue-frequency">{t('common.frequency')}</Label>
-                <Select value={frequency} onValueChange={(v) => setFrequency(v as 'monthly' | 'annual')}>
+                <Select value={frequency} onValueChange={(v) => setFrequency(v as CashflowFrequency)}>
                   <SelectTrigger id="revenue-frequency">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="monthly">{t('common.monthly')}</SelectItem>
+                    <SelectItem value="quarterly">{t('common.quarterly')}</SelectItem>
                     <SelectItem value="annual">{t('common.annual')}</SelectItem>
                   </SelectContent>
                 </Select>

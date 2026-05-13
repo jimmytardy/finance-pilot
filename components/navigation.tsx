@@ -1,5 +1,6 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
@@ -7,7 +8,11 @@ import { useTheme } from 'next-themes'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import { UI_LANGUAGE_OPTIONS, resolveUiLanguageCode } from '@/lib/ui-languages'
+import type { LucideIcon } from 'lucide-react'
 import {
+  Building2,
+  CalendarRange,
+  ClipboardList,
   Database,
   GitCompare,
   Languages,
@@ -17,11 +22,11 @@ import {
   Monitor,
   Moon,
   Sun,
+  Table2,
   Wallet,
 } from 'lucide-react'
 import { signOut, useSession } from 'next-auth/react'
 import { FinancePilotLogo } from '@/components/finance-pilot-logo'
-import { SavedProjectsMenu } from '@/components/saved-projects-menu'
 import { SimulatorAuthMenu } from '@/components/simulator-auth-menu'
 import { Button } from '@/components/ui/button'
 import {
@@ -43,18 +48,25 @@ import {
 } from '@/components/ui/sheet'
 
 /** Aucun lien « Accueil » : 1re entrée = Données (/donnees), icône base de données (pas maison). */
-const simulatorNavItems = [
+export const simulatorNavItems = [
   { href: '/donnees', labelKey: 'navigation.data' as const, icon: Database },
   { href: '/gestion-mensuel', labelKey: 'navigation.advancedFinance' as const, icon: Wallet },
+  { href: '/gestion-annuelle', labelKey: 'navigation.annualManagement' as const, icon: CalendarRange },
   { href: '/estimations', labelKey: 'navigation.estimates' as const, icon: LineChart },
   { href: '/comparaison', labelKey: 'navigation.comparison' as const, icon: GitCompare },
 ] as const
 
-function navItemActive(pathname: string, href: string): boolean {
+export const salairesNavItems = [
+  { href: '/salaires/saisie', labelKey: 'navigation.salaryData' as const, icon: Table2 },
+  { href: '/salaires/recapitulatif', labelKey: 'navigation.salaryRecap' as const, icon: ClipboardList },
+  { href: '/salaires/entreprises', labelKey: 'navigation.salaryEmployers' as const, icon: Building2 },
+] as const
+
+export function navItemActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`)
 }
 
-function NavLink({
+export function NavLink({
   href,
   label,
   Icon,
@@ -64,7 +76,7 @@ function NavLink({
 }: {
   href: string
   label: string
-  Icon: (typeof simulatorNavItems)[number]['icon']
+  Icon: LucideIcon
   active: boolean
   onNavigate?: () => void
   className?: string
@@ -87,7 +99,9 @@ function NavLink({
   )
 }
 
-export function Navigation() {
+export type SimulatorMobileNavRenderer = (opts: { closeSheet: () => void }) => ReactNode
+
+export function SimulatorTopBar({ renderMobileNav }: { renderMobileNav?: SimulatorMobileNavRenderer }) {
   const pathname = usePathname()
   const { status: sessionStatus } = useSession()
   const { t, i18n } = useTranslation()
@@ -115,6 +129,7 @@ export function Navigation() {
         : Monitor
 
   const currentLang = resolveUiLanguageCode(i18n.language)
+  const closeSheet = () => setBurgerOpen(false)
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -127,21 +142,8 @@ export function Navigation() {
             <FinancePilotLogo />
           </div>
 
-          <div className="hidden min-w-0 flex-1 flex-wrap items-center justify-center gap-1 md:flex">
-            {simulatorNavItems.map((item) => (
-              <NavLink
-                key={item.href}
-                href={item.href}
-                label={t(item.labelKey)}
-                Icon={item.icon}
-                active={navItemActive(pathname, item.href)}
-              />
-            ))}
-          </div>
-
           <div className="ml-auto flex shrink-0 items-center gap-2">
             <SimulatorAuthMenu />
-            {pathname !== '/connexion' ? <SavedProjectsMenu /> : null}
 
             <Button
               type="button"
@@ -158,60 +160,70 @@ export function Navigation() {
 
             <Sheet open={burgerOpen} onOpenChange={setBurgerOpen}>
               <SheetTrigger asChild>
-                <Button type="button" variant="outline" size="icon" className="h-10 w-10 shrink-0 md:hidden" title={t('navigation.moreMenu')}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-10 w-10 shrink-0 md:hidden"
+                  title={t('navigation.moreMenu')}
+                >
                   <Menu className="h-5 w-5" />
                   <span className="sr-only">{t('navigation.moreMenu')}</span>
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-[min(100vw-1rem,22rem)] sm:max-w-sm">
+              <SheetContent side="right" className="flex w-[min(100vw-1rem,22rem)] flex-col sm:max-w-sm">
                 <SheetHeader>
                   <SheetTitle>{t('navigation.moreMenu')}</SheetTitle>
                 </SheetHeader>
-                <nav className="flex flex-col gap-2 px-2 pb-8 pt-2">
-                  {simulatorNavItems.map((item) => (
-                    <SheetClose asChild key={item.href}>
-                      <NavLink
-                        href={item.href}
-                        label={t(item.labelKey)}
-                        Icon={item.icon}
-                        active={navItemActive(pathname, item.href)}
-                        onNavigate={() => setBurgerOpen(false)}
-                        className="py-3.5"
-                      />
-                    </SheetClose>
-                  ))}
-                  <div className="mt-4 border-t border-border pt-4">
-                    <p className="mb-2 text-xs font-medium text-muted-foreground">{t('navigation.themeCycle')}</p>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="h-11 w-11"
-                      disabled={!themeReady}
-                      title={t('navigation.themeCycle')}
-                      aria-label={t('navigation.themeCycle')}
-                      onClick={cycleTheme}
-                    >
-                      <ThemeIcon className="h-5 w-5 shrink-0" />
-                    </Button>
-                  </div>
-                  {sessionStatus === 'authenticated' && (
+                {renderMobileNav ? (
+                  <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-2 pb-8 pt-2">{renderMobileNav({ closeSheet })}</div>
+                ) : (
+                  <nav className="flex flex-col gap-2 px-2 pb-8 pt-2">
+                    {simulatorNavItems.map((item) => (
+                      <SheetClose asChild key={item.href}>
+                        <NavLink
+                          href={item.href}
+                          label={t(item.labelKey)}
+                          Icon={item.icon}
+                          active={navItemActive(pathname, item.href)}
+                          onNavigate={closeSheet}
+                          className="py-3.5"
+                        />
+                      </SheetClose>
+                    ))}
                     <div className="mt-4 border-t border-border pt-4">
+                      <p className="mb-2 text-xs font-medium text-muted-foreground">{t('navigation.themeCycle')}</p>
                       <Button
                         type="button"
                         variant="outline"
-                        className="h-12 w-full justify-start gap-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                        onClick={() => {
-                          setBurgerOpen(false)
-                          void signOut({ callbackUrl: '/connexion' })
-                        }}
+                        size="icon"
+                        className="h-11 w-11"
+                        disabled={!themeReady}
+                        title={t('navigation.themeCycle')}
+                        aria-label={t('navigation.themeCycle')}
+                        onClick={cycleTheme}
                       >
-                        <LogOut className="h-4 w-4 shrink-0" aria-hidden />
-                        {t('auth.signOut')}
+                        <ThemeIcon className="h-5 w-5 shrink-0" />
                       </Button>
                     </div>
-                  )}
-                </nav>
+                    {sessionStatus === 'authenticated' && (
+                      <div className="mt-4 border-t border-border pt-4">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-12 w-full justify-start gap-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          onClick={() => {
+                            closeSheet()
+                            void signOut({ callbackUrl: '/connexion' })
+                          }}
+                        >
+                          <LogOut className="h-4 w-4 shrink-0" aria-hidden />
+                          {t('auth.signOut')}
+                        </Button>
+                      </div>
+                    )}
+                  </nav>
+                )}
               </SheetContent>
             </Sheet>
 
@@ -252,4 +264,8 @@ export function Navigation() {
       </div>
     </nav>
   )
+}
+
+export function Navigation() {
+  return <SimulatorTopBar />
 }

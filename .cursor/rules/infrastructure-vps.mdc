@@ -61,5 +61,8 @@ alwaysApply: true
 ## Référence — ce dépôt (Docker / Prisma)
 
 - Exemple `DATABASE_URL` sur le réseau partagé : `postgresql://admin:MOT_DE_PASSE@postgres:5432/finance_pilot?schema=public`
-- Migrations sans service dédié : `docker compose run --rm --entrypoint prisma app migrate deploy` ou `… app db push`
+- **Pas de Liquibase** dans ce projet : les évolutions de schéma passent par **Prisma** (`prisma/schema.prisma` + dossier `prisma/migrations/` versionné).
+- Au lancement du conteneur, `docker-entrypoint.sh` peut appliquer les migrations si `RUN_MIGRATIONS_ON_START=true` (`prisma migrate deploy`), ou faire un `db push` si `RUN_DB_PUSH_ON_START=true` (développement / schéma sans historique de migrations — à éviter en prod multi-instances).
+- En local : `pnpm db:migrate` (`prisma migrate dev`) après modification du schéma ; committer les fichiers générés sous `prisma/migrations/`.
+- Migrations one-shot sans variable d’environnement : `docker compose run --rm --entrypoint prisma app migrate deploy` ou `… app db push`
 - Next.js + Prisma : si Alpine pose problème avec les engines, **`node:*-bookworm-slim`** et sortie **`output: 'standalone'`** restent acceptables pour limiter RAM et fiabilité

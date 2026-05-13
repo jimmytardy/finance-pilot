@@ -25,7 +25,8 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { GripVertical, Plus, Pencil, Trash2, Receipt } from 'lucide-react'
-import type { ExpenseSchedule, FixedExpense } from '@/lib/types'
+import type { CashflowFrequency, ExpenseSchedule, FixedExpense } from '@/lib/types'
+import { normalizeDayOfMonth, toMonthlyCashflowAmount } from '@/lib/cashflow-frequency'
 import { formatCurrencyAmount } from '@/lib/i18n/locale'
 import { ScheduleEditor } from '@/components/dashboard/schedule-editor'
 
@@ -80,8 +81,12 @@ function SortableExpenseRow({
         <div className="flex min-w-0 flex-col">
           <span className="truncate font-medium">{expense.label}</span>
           <span className="text-xs text-muted-foreground">
-            {expense.frequency === 'annual' ? t('common.annual') : t('common.monthly')}
-            {expense.frequency === 'annual' && (
+            {expense.frequency === 'monthly'
+              ? t('common.monthly')
+              : expense.frequency === 'quarterly'
+                ? t('common.quarterly')
+                : t('common.annual')}
+            {expense.frequency !== 'monthly' && (
               <span className="ml-1">({formatCurrency(getMonthlyAmount(expense))}{t('common.perMonth')})</span>
             )}
             {expense.schedule && (
@@ -127,7 +132,7 @@ export function FixedExpensesSection({
   const [editingId, setEditingId] = useState<string | null>(null)
   const [label, setLabel] = useState('')
   const [amount, setAmount] = useState('')
-  const [frequency, setFrequency] = useState<'monthly' | 'annual'>('monthly')
+  const [frequency, setFrequency] = useState<CashflowFrequency>('monthly')
   const [scheduleForm, setScheduleForm] = useState<ExpenseSchedule | undefined>(undefined)
 
   const formatCurrency = (amount: number) => formatCurrencyAmount(amount, i18n.language)
@@ -139,7 +144,7 @@ export function FixedExpensesSection({
     return {
       category: cat,
       paymentMode: scheduleForm.paymentMode,
-      dayOfMonth: Math.min(31, Math.max(1, scheduleForm.dayOfMonth)),
+      dayOfMonth: normalizeDayOfMonth(scheduleForm.dayOfMonth),
     }
   }
 
@@ -180,9 +185,8 @@ export function FixedExpensesSection({
     setIsAddOpen(true)
   }
 
-  const getMonthlyAmount = (expense: FixedExpense) => {
-    return expense.frequency === 'annual' ? expense.amount / 12 : expense.amount
-  }
+  const getMonthlyAmount = (expense: FixedExpense) =>
+    toMonthlyCashflowAmount(expense.amount, expense.frequency)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -243,12 +247,13 @@ export function FixedExpensesSection({
               </div>
               <div className="flex flex-col gap-2">
                 <Label>{t('common.frequency')}</Label>
-                <Select value={frequency} onValueChange={(v) => setFrequency(v as 'monthly' | 'annual')}>
+                <Select value={frequency} onValueChange={(v) => setFrequency(v as CashflowFrequency)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="monthly">{t('common.monthly')}</SelectItem>
+                    <SelectItem value="quarterly">{t('common.quarterly')}</SelectItem>
                     <SelectItem value="annual">{t('common.annual')}</SelectItem>
                   </SelectContent>
                 </Select>

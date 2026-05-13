@@ -15,9 +15,10 @@ import {
 import { useSession } from 'next-auth/react'
 import { useTranslation } from 'react-i18next'
 import type { FinanceData, SavedProject } from '@/lib/types'
+import { EMPTY_FINANCE_DATA } from '@/lib/finance-defaults'
 import { normalizeFinanceData } from '@/lib/normalize-finance-data'
 import { getLocalizedExampleFinanceData, matchesBuiltInExample } from '@/lib/example-finance-localized'
-import { monthKeyFromDate } from '@/lib/schedule-utils'
+import { monthKeyFromDate, sortMonthKeysAsc } from '@/lib/schedule-utils'
 import i18n from '@/lib/i18n/i18n'
 import {
   bundleFromApiJson,
@@ -35,6 +36,8 @@ function sortProjects(list: SavedProject[]) {
 function resolveLang(lng: string | undefined): 'fr' | 'en' {
   return lng?.startsWith('en') ? 'en' : 'fr'
 }
+
+const MONTH_KEY_RE = /^\d{4}-\d{2}$/
 
 type SimulatorWorkspaceContextValue = {
   setFinanceData: Dispatch<SetStateAction<FinanceData>>
@@ -57,9 +60,19 @@ type SimulatorWorkspaceContextValue = {
   setManyDone: (itemKeys: string[], done: boolean, keyMonth?: string) => void
   resetMonth: (keyMonth: string) => void
   getCurrentMonthKey: typeof monthKeyFromDate
+  activeMonthKey: string
+  monthlySnapshots: Record<string, FinanceData>
+  sortedMonthKeys: string[]
+  setActiveMonthKey: (key: string) => void
+  duplicateMonthFrom: (targetKey: string, sourceKey: string) => void
+  createEmptyMonth: (targetKey: string) => void
 }
 
 const SimulatorWorkspaceContext = createContext<SimulatorWorkspaceContextValue | null>(null)
+
+function activeFinanceData(bundle: SimulatorPersistedBundle): FinanceData {
+  return bundle.monthlySnapshots[bundle.activeMonthKey] ?? EMPTY_FINANCE_DATA
+}
 
 export function SimulatorWorkspaceProvider({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession()
@@ -136,9 +149,18 @@ export function SimulatorWorkspaceProvider({ children }: { children: ReactNode }
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
-      }).catch(() => {
-        /* réseau : prochaine édition réessaiera */
       })
+        .then(async (res) => {
+          if (!res.ok && process.env.NODE_ENV === 'development') {
+            const text = await res.text().catch(() => '')
+            console.warn('[simulator persist]', res.status, text)
+          }
+        })
+        .catch((err) => {
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('[simulator persist]', err)
+          }
+        })
     }, 900)
     return () => window.clearTimeout(timer)
   }, [bundle, status, workspaceReady])
@@ -146,10 +168,14 @@ export function SimulatorWorkspaceProvider({ children }: { children: ReactNode }
   useEffect(() => {
     const onLang = (lng: string) => {
       setBundle((prev) => {
-        if (!matchesBuiltInExample(prev.financeData)) return prev
+        const cur = activeFinanceData(prev)
+        if (!matchesBuiltInExample(cur)) return prev
         return {
           ...prev,
-          financeData: structuredClone(getLocalizedExampleFinanceData(resolveLang(lng))),
+          monthlySnapshots: {
+            ...prev.monthlySnapshots,
+            [prev.activeMonthKey]: structuredClone(getLocalizedExampleFinanceData(resolveLang(lng))),
+          },
         }
       })
     }
@@ -160,9 +186,49 @@ export function SimulatorWorkspaceProvider({ children }: { children: ReactNode }
   }, [])
 
   const setFinanceData = useCallback((next: SetStateAction<FinanceData>) => {
+    setBundle((prev) => {
+      const key = prev.activeMonthKey
+      const current = prev.monthlySnapshots[key] ?? EMPTY_FINANCE_DATA
+      const resolved = typeof next === 'function' ? (next as (p: FinanceData) => FinanceData)(current) : next
+      const normalized = normalizeFinanceData(JSON.parse(JSON.stringify(resolved)))
+      return {
+        ...prev,
+        monthlySnapshots: { ...prev.monthlySnapshots, [key]: normalized },
+      }
+    })
+  }, [])
+
+  const setActiveMonthKey = useCallback((key: string) => {
+    if (!MONTH_KEY_RE.test(key)) return
+    setBundle((prev) => {
+      if (!prev.monthlySnapshots[key]) return prev
+      return { ...prev, activeMonthKey: key }
+    })
+  }, [])
+
+  const duplicateMonthFrom = useCallback((targetKey: string, sourceKey: string) => {
+    if (!MONTH_KEY_RE.test(targetKey)) return
+    setBundle((prev) => {
+      const source = prev.monthlySnapshots[sourceKey]
+      if (!source) return prev
+      const clone = normalizeFinanceData(JSON.parse(JSON.stringify(source)))
+      return {
+        ...prev,
+        activeMonthKey: targetKey,
+        monthlySnapshots: { ...prev.monthlySnapshots, [targetKey]: clone },
+      }
+    })
+  }, [])
+
+  const createEmptyMonth = useCallback((targetKey: string) => {
+    if (!MONTH_KEY_RE.test(targetKey)) return
     setBundle((prev) => ({
       ...prev,
-      financeData: typeof next === 'function' ? next(prev.financeData) : next,
+      activeMonthKey: targetKey,
+      monthlySnapshots: {
+        ...prev.monthlySnapshots,
+        [targetKey]: structuredClone(EMPTY_FINANCE_DATA),
+      },
     }))
   }, [])
 
@@ -192,7 +258,7 @@ export function SimulatorWorkspaceProvider({ children }: { children: ReactNode }
       savedProjects: sortProjects([...prev.savedProjects, project]),
     }))
     return id
-  }, [])
+  }, [status])
 
   const updateProjectSnapshot = useCallback((id: string, data: FinanceData) => {
     setBundle((prev) => {
@@ -278,10 +344,17 @@ export function SimulatorWorkspaceProvider({ children }: { children: ReactNode }
   const isLoadedProjects = financeLoaded
   const scheduleLoaded = financeLoaded
 
+  const sortedMonthKeys = useMemo(
+    () => sortMonthKeysAsc(Object.keys(bundle.monthlySnapshots)),
+    [bundle.monthlySnapshots],
+  )
+
+  const financeData = useMemo(() => activeFinanceData(bundle), [bundle])
+
   const value = useMemo(
     () => ({
       setFinanceData,
-      financeData: bundle.financeData,
+      financeData,
       financeLoaded,
       authLoading,
       persistenceRemote,
@@ -299,16 +372,25 @@ export function SimulatorWorkspaceProvider({ children }: { children: ReactNode }
       setManyDone,
       resetMonth,
       getCurrentMonthKey: monthKeyFromDate,
+      activeMonthKey: bundle.activeMonthKey,
+      monthlySnapshots: bundle.monthlySnapshots,
+      sortedMonthKeys,
+      setActiveMonthKey,
+      duplicateMonthFrom,
+      createEmptyMonth,
     }),
     [
       setFinanceData,
-      bundle.financeData,
-      bundle.savedProjects,
-      bundle.activeProjectId,
+      financeData,
       financeLoaded,
       authLoading,
       persistenceRemote,
       googleAuthConfigured,
+      bundle.savedProjects,
+      bundle.activeProjectId,
+      bundle.activeMonthKey,
+      bundle.monthlySnapshots,
+      sortedMonthKeys,
       isLoadedProjects,
       setActiveProjectId,
       addProject,
@@ -319,6 +401,9 @@ export function SimulatorWorkspaceProvider({ children }: { children: ReactNode }
       setDone,
       setManyDone,
       resetMonth,
+      setActiveMonthKey,
+      duplicateMonthFrom,
+      createEmptyMonth,
     ],
   )
 

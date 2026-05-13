@@ -7,6 +7,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum SalaryBonusBasis {
+  BRUT
+  NET
+}
+
+enum SalaryBonusFlow {
+  FIXE
+  VARIABLE
+}
+
 model Account {
   id                String  @id @default(cuid())
   userId            String
@@ -35,14 +45,17 @@ model Session {
 }
 
 model User {
-  id             String          @id @default(cuid())
-  name           String?
-  email          String?         @unique
-  emailVerified  DateTime?
-  image          String?
-  accounts       Account[]
-  sessions       Session[]
-  simulatorState SimulatorState?
+  id                 String              @id @default(cuid())
+  name               String?
+  email              String?             @unique
+  emailVerified      DateTime?
+  image              String?
+  accounts           Account[]
+  sessions           Session[]
+  simulatorState     SimulatorState?
+  employers          Employer[]
+  employmentPeriods EmploymentPeriod[]
+  salaryMonths       SalaryMonth[]
 }
 
 model VerificationToken {
@@ -59,4 +72,72 @@ model SimulatorState {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   payload   Json
   updatedAt DateTime @updatedAt
+}
+
+model Employer {
+  id                  String               @id @default(cuid())
+  userId              String
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name                String
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  employmentPeriods EmploymentPeriod[]
+  salaryMonths        SalaryMonth[]
+
+  @@index([userId])
+}
+
+model EmploymentPeriod {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  employerId String
+  employer   Employer  @relation(fields: [employerId], references: [id], onDelete: Cascade)
+  startDate  DateTime  @db.Date
+  endDate    DateTime? @db.Date
+  notes      String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([employerId])
+}
+
+model SalaryMonth {
+  id                           String        @id @default(cuid())
+  userId                       String
+  user                         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  employerId                   String?
+  employer                     Employer?     @relation(fields: [employerId], references: [id], onDelete: SetNull)
+  year                         Int
+  month                        Int
+  brut                         Decimal       @db.Decimal(14, 2)
+  netImposable                 Decimal       @db.Decimal(14, 2)
+  netPaye                      Decimal       @db.Decimal(14, 2)
+  prelevementSource            Decimal       @db.Decimal(14, 2)
+  ticketRestaurant             Decimal       @db.Decimal(14, 2)
+  primesIndemnitesIncluses     Decimal       @default(0) @db.Decimal(14, 2)
+  primesIndemnitesNonIncluses  Decimal       @default(0) @db.Decimal(14, 2)
+  explanation                  String?       @db.Text
+  createdAt                    DateTime      @default(now())
+  updatedAt                    DateTime      @updatedAt
+  bonuses                      SalaryBonus[]
+
+  @@unique([userId, year, month])
+  @@index([userId, year])
+}
+
+model SalaryBonus {
+  id            String           @id @default(cuid())
+  salaryMonthId String
+  salaryMonth   SalaryMonth      @relation(fields: [salaryMonthId], references: [id], onDelete: Cascade)
+  category      String
+  description   String           @default("")
+  amount        Decimal          @db.Decimal(14, 2)
+  basis         SalaryBonusBasis
+  flow          SalaryBonusFlow
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@index([salaryMonthId])
 }

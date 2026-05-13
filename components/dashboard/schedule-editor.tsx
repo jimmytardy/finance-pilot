@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronsUpDown } from 'lucide-react'
 import { Label } from '@/components/ui/label'
@@ -19,6 +19,7 @@ import {
   CommandSeparator,
 } from '@/components/ui/command'
 import { cn } from '@/lib/utils'
+import { normalizeDayOfMonth } from '@/lib/cashflow-frequency'
 import type { ExpenseSchedule } from '@/lib/types'
 
 type Props = {
@@ -26,6 +27,56 @@ type Props = {
   onChange: (next: ExpenseSchedule | undefined) => void
   categoryListId: string
   categorySuggestions: string[]
+}
+
+function ScheduleDayOfMonthInput({
+  dayOfMonth,
+  id,
+  label,
+  hint,
+  onCommit,
+}: {
+  dayOfMonth: number
+  id: string
+  label: string
+  hint: string
+  onCommit: (n: number) => void
+}) {
+  const [draft, setDraft] = useState(() => String(dayOfMonth))
+
+  useEffect(() => {
+    setDraft(String(dayOfMonth))
+  }, [dayOfMonth])
+
+  const commit = () => {
+    const t = draft.trim()
+    const n = t === '' ? 1 : normalizeDayOfMonth(Number(t))
+    setDraft(String(n))
+    onCommit(n)
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <Label htmlFor={id}>{label}</Label>
+      <Input
+        id={id}
+        type="text"
+        inputMode="numeric"
+        autoComplete="off"
+        maxLength={2}
+        value={draft}
+        onChange={(e) => {
+          const v = e.target.value.replace(/\D/g, '').slice(0, 2)
+          setDraft(v)
+        }}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') commit()
+        }}
+      />
+      <p className="text-xs text-muted-foreground">{hint}</p>
+    </div>
+  )
 }
 
 function ScheduleCategoryCombobox({
@@ -197,23 +248,13 @@ export function ScheduleEditor({ value, onChange, categoryListId, categorySugges
               </SelectContent>
             </Select>
           </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor={`${categoryListId}-day`}>{t('schedule.dayOfMonth')}</Label>
-            <Input
-              id={`${categoryListId}-day`}
-              type="number"
-              min={1}
-              max={31}
-              value={value.dayOfMonth}
-              onChange={(e) => {
-                const n = parseInt(e.target.value, 10)
-                onChange({
-                  ...value,
-                  dayOfMonth: Number.isFinite(n) ? Math.min(31, Math.max(1, n)) : 1,
-                })
-              }}
-            />
-          </div>
+          <ScheduleDayOfMonthInput
+            dayOfMonth={value.dayOfMonth}
+            id={`${categoryListId}-day`}
+            label={t('schedule.dayOfMonth')}
+            hint={t('schedule.dayOfMonthHint')}
+            onCommit={(n) => onChange({ ...value, dayOfMonth: n })}
+          />
         </div>
       )}
     </div>

@@ -1,0 +1,344 @@
+{
+  "revenues": [
+    {
+      "id": "rev-salaire",
+      "label": "Salaire",
+      "amount": 2741,
+      "frequency": "monthly"
+    },
+    {
+      "id": "rev-ticket-resto",
+      "label": "Ticket resto",
+      "amount": 150,
+      "frequency": "monthly"
+    },
+    {
+      "id": "rev-superprof",
+      "label": "Superprof (Bonus)",
+      "amount": 0,
+      "frequency": "monthly"
+    }
+  ],
+  "fixedExpenses": [
+    {
+      "id": "fx-dettes-maman",
+      "label": "Dettes Maman",
+      "amount": 200,
+      "frequency": "monthly",
+      "schedule": {
+        "category": "Dettes",
+        "paymentMode": "automatic",
+        "dayOfMonth": 5
+      }
+    },
+    {
+      "id": "fx-telephone",
+      "label": "Téléphone",
+      "amount": 6.99,
+      "frequency": "monthly",
+      "schedule": {
+        "category": "Dépenses obligatoires",
+        "paymentMode": "automatic",
+        "dayOfMonth": 2
+      }
+    },
+    {
+      "id": "fx-lola",
+      "label": "Lola",
+      "amount": 10,
+      "frequency": "monthly",
+      "schedule": {
+        "category": "Cadeaux",
+        "paymentMode": "automatic",
+        "dayOfMonth": 5
+      }
+    },
+    {
+      "id": "fx-loyer",
+      "label": "Loyer",
+      "amount": 616.55,
+      "frequency": "monthly",
+      "schedule": {
+        "category": "Appartement",
+        "paymentMode": "automatic",
+        "dayOfMonth": 5
+      }
+    },
+    {
+      "id": "fx-assurance-emprunteur",
+      "label": "Assurance emprunteur",
+      "amount": 7.69,
+      "frequency": "monthly",
+      "schedule": {
+        "category": "Appartement",
+        "paymentMode": "automatic",
+        "dayOfMonth": 5
+      }
+    },
+    {
+      "id": "fx-electricite",
+      "label": "Électricité",
+      "amount": 93,
+      "frequency": "monthly",
+      "schedule": {
+        "category": "Appartement",
+        "paymentMode": "automatic",
+        "dayOfMonth": 5
+      }
+    },
+    {
+      "id": "fx-eau",
+      "label": "Eau",
+      "amount": 14,
+      "frequency": "monthly",
+      "schedule": {
+        "category": "Appartement",
+        "paymentMode": "automatic",
+        "dayOfMonth": 5
+      }
+    },
+    {
+      "id": "fx-assurance-habitation",
+      "label": "Assurance habitation",
+      "amount": 17.66,
+      "frequency": "monthly",
+      "schedule": {
+        "category": "Appartement",
+        "paymentMode": "automatic",
+        "dayOfMonth": 5
+      }
+    },
+    {
+      "id": "fx-internet",
+      "label": "Internet",
+      "amount": 23.99,
+      "frequency": "monthly",
+      "schedule": {
+        "category": "Appartement",
+        "paymentMode": "automatic",
+        "dayOfMonth": 5
+      }
+    },
+    {
+      "id": "fx-onedrive",
+      "label": "One drive",
+      "amount": 2,
+      "frequency": "monthly",
+      "schedule": {
+        "category": "Dépenses obligatoires",
+        "paymentMode": "automatic",
+        "dayOfMonth": 7
+      }
+    },
+    {
+      "id": "fx-ovh",
+      "label": "OVH",
+      "amount": 11.52,
+      "frequency": "monthly",
+      "schedule": {
+        "category": "Autre",
+        "paymentMode": "automatic",
+        "dayOfMonth": 7
+      }
+    },
+    {
+      "id": "fx-assurance-civile",
+      "label": "Assurance Civile MAE",
+      "amount": 6.7,
+      "frequency": "monthly",
+      "schedule": {
+        "category": "Dépenses obligatoires",
+        "paymentMode": "automatic",
+        "dayOfMonth": 8
+      }
+    },
+    {
+      "id": "fx-copro",
+      "label": "Frais copropriété",
+      "amount": 95.57,
+      "frequency": "monthly",
+      "schedule": {
+        "category": "Appartement",
+        "paymentMode": "automatic",
+        "dayOfMonth": 15
+      }
+    },
+    {
+      "id": "fx-github",
+      "label": "Github copilot",
+      "amount": 0,
+      "frequency": "monthly",
+      "schedule": {
+        "category": "Autre",
+        "paymentMode": "automatic",
+        "dayOfMonth": 27
+      }
+    },
+    {
+      "id": "fx-wecasa",
+      "label": "WeCasa",
+      "amount": 0,
+      "frequency": "monthly",
+      "schedule": {
+        "category": "Appartement",
+        "paymentMode": "automatic",
+        "dayOfMonth": 31
+      }
+    },
+    {
+      "id": "fx-sport-auto",
+      "label": "SPORT",
+      "amount": 150,
+      "frequency": "monthly",
+      "schedule": {
+        "category": "Sport",
+        "paymentMode": "automatic",
+        "dayOfMonth": 31
+      }
+    },
+    {
+      "id": "fx-taxe-fonciere",
+      "label": "Taxe foncière",
+      "amount": 100,
+      "frequency": "monthly",
+      "schedule": {
+        "category": "Impots",
+        "paymentMode": "manual",
+        "dayOfMonth": 1
+      }
+    },
+    {
+      "id": "fx-impot-revenu",
+      "label": "Impôts revenu",
+      "amount": 200,
+      "frequency": "monthly",
+      "schedule": {
+        "category": "Impots",
+        "paymentMode": "manual",
+        "dayOfMonth": 1
+      }
+    }
+  ],
+  "annexBudgets": [
+    {
+      "id": "ann-loisir",
+      "label": "Loisir",
+      "amount": 150,
+      "frequency": "monthly",
+      "schedule": {
+        "category": "Loisir",
+        "paymentMode": "manual",
+        "dayOfMonth": 1
+      }
+    },
+    {
+      "id": "ann-cadeau",
+      "label": "Cadeau",
+      "amount": 40,
+      "frequency": "monthly",
+      "schedule": {
+        "category": "Cadeaux",
+        "paymentMode": "manual",
+        "dayOfMonth": 1
+      }
+    },
+    {
+      "id": "ann-voyage",
+      "label": "Voyage",
+      "amount": 250,
+      "frequency": "monthly",
+      "schedule": {
+        "category": "Voyage",
+        "paymentMode": "manual",
+        "dayOfMonth": 1
+      }
+    },
+    {
+      "id": "ann-courses",
+      "label": "Alimentation / courses diverses",
+      "amount": 175,
+      "frequency": "monthly",
+      "schedule": {
+        "category": "Courses",
+        "paymentMode": "manual",
+        "dayOfMonth": 1
+      }
+    },
+    {
+      "id": "ann-epargne",
+      "label": "Côté divers",
+      "amount": 150,
+      "frequency": "monthly",
+      "schedule": {
+        "category": "Épargne",
+        "paymentMode": "manual",
+        "dayOfMonth": 1
+      }
+    },
+    {
+      "id": "ann-sport",
+      "label": "Sport",
+      "amount": 25,
+      "frequency": "monthly",
+      "schedule": {
+        "category": "Sport",
+        "paymentMode": "manual",
+        "dayOfMonth": 1
+      }
+    },
+    {
+      "id": "ann-coach",
+      "label": "Coach",
+      "amount": 125,
+      "frequency": "monthly",
+      "schedule": {
+        "category": "Sport coach",
+        "paymentMode": "manual",
+        "dayOfMonth": 1
+      }
+    },
+    {
+      "id": "ann-whey",
+      "label": "Whey / Créatine",
+      "amount": 45,
+      "frequency": "monthly",
+      "schedule": {
+        "category": "Sport",
+        "paymentMode": "manual",
+        "dayOfMonth": 1
+      }
+    },
+    {
+      "id": "ann-salle",
+      "label": "Salle de sport",
+      "amount": 40,
+      "frequency": "monthly",
+      "schedule": {
+        "category": "Sport",
+        "paymentMode": "manual",
+        "dayOfMonth": 1
+      }
+    },
+    {
+      "id": "ann-appart-misc",
+      "label": "Appartement",
+      "amount": 25,
+      "frequency": "monthly",
+      "schedule": {
+        "category": "Appartement",
+        "paymentMode": "manual",
+        "dayOfMonth": 1
+      }
+    }
+  ],
+  "rentalProperties": [],
+  "investments": [
+    {
+      "id": "inv-bitstack",
+      "label": "btc bitstack",
+      "currentValue": 0,
+      "monthlyContribution": 100,
+      "annualReturn": 0
+    }
+  ]
+}

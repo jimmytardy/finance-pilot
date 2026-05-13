@@ -22,6 +22,9 @@ services:
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      # Prisma (pas Liquibase) : voir docker-entrypoint.sh — nécessite prisma/migrations/ versionnées.
+      RUN_MIGRATIONS_ON_START: ${RUN_MIGRATIONS_ON_START:-false}
+      RUN_DB_PUSH_ON_START: ${RUN_DB_PUSH_ON_START:-false}
     networks:
       - postgres_network
 

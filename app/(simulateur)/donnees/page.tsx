@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFinanceData } from '@/hooks/use-finance-data'
 import { RevenueSection } from '@/components/dashboard/revenue-section'
@@ -11,10 +11,12 @@ import { InvestmentsSection } from '@/components/dashboard/investments-section'
 import { SummaryCard } from '@/components/dashboard/summary-card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { FinanceJsonIoToolbar } from '@/components/finance-json-io-toolbar'
+import { DataMonthToolbar } from '@/components/dashboard/data-month-toolbar'
 import { ArrowDownRight, Scale, TrendingUp } from 'lucide-react'
 
 export default function DataPage() {
   const { t } = useTranslation()
+  const [pendingNewMonth, setPendingNewMonth] = useState<string | null>(null)
   const {
     data,
     isLoaded,
@@ -96,6 +98,12 @@ export default function DataPage() {
           <p className="mt-1 text-muted-foreground">{t('dataPage.subtitle')}</p>
         </header>
 
+        <DataMonthToolbar className="mb-8" onPendingMonthChange={setPendingNewMonth} />
+
+        {pendingNewMonth ? (
+          <p className="mb-8 text-sm text-muted-foreground">{t('dataPage.pendingBodyHidden')}</p>
+        ) : (
+          <>
         <section className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <SummaryCard
             title={t('dataPage.liveRevenue')}
@@ -186,6 +194,8 @@ export default function DataPage() {
             <FinanceJsonIoToolbar />
           </div>
         </footer>
+          </>
+        )}
       </div>
     </main>
   )

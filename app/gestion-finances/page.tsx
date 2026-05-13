@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFinanceData } from '@/hooks/use-finance-data'
 import { useScheduleCompletion } from '@/hooks/use-schedule-completion'
+import { useSimulatorWorkspace } from '@/contexts/simulator-workspace-context'
 import { BreakdownChart } from '@/components/dashboard/breakdown-chart'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -24,8 +25,10 @@ import {
   isAutomaticDebitDueToday,
   isAutomaticDebitPastThisMonth,
   manualTransferDueStatus,
+  referenceDateForBudgetMonth,
 } from '@/lib/schedule-utils'
 import type { AnnexBudget, FixedExpense } from '@/lib/types'
+import { toMonthlyCashflowAmount } from '@/lib/cashflow-frequency'
 
 type LineKind = 'fixed' | 'annex'
 
@@ -39,8 +42,8 @@ type ScheduledLine = {
   paymentMode: 'manual' | 'automatic'
 }
 
-function toMonthly(e: { amount: number; frequency: 'monthly' | 'annual' }) {
-  return e.frequency === 'annual' ? e.amount / 12 : e.amount
+function toMonthly(e: { amount: number; frequency: FixedExpense['frequency'] }) {
+  return toMonthlyCashflowAmount(e.amount, e.frequency)
 }
 
 function collectScheduled(
@@ -132,11 +135,11 @@ function buildManualGroups(
 export default function AdvancedFinancePage() {
   const { t, i18n } = useTranslation()
   const { data, isLoaded } = useFinanceData()
-  const { loaded: completionLoaded, getCurrentMonthKey, getDone, setDone, setManyDone, resetMonth } =
-    useScheduleCompletion()
+  const { loaded: completionLoaded, getDone, setDone, setManyDone, resetMonth } = useScheduleCompletion()
+  const { activeMonthKey } = useSimulatorWorkspace()
 
-  const now = new Date()
-  const monthKey = getCurrentMonthKey(now)
+  const refDate = useMemo(() => referenceDateForBudgetMonth(activeMonthKey), [activeMonthKey])
+  const monthKey = activeMonthKey
 
   const monthLabel = useMemo(() => {
     const [y, m] = monthKey.split('-').map(Number)
@@ -174,22 +177,22 @@ export default function AdvancedFinancePage() {
   )
 
   const upcomingAuto = lines
-    .filter((l) => l.paymentMode === 'automatic' && !isAutomaticDebitPastThisMonth(l.dayOfMonth, now))
+    .filter((l) => l.paymentMode === 'automatic' && !isAutomaticDebitPastThisMonth(l.dayOfMonth, refDate))
     .sort(
       (a, b) =>
-        effectiveDayInMonth(now.getFullYear(), now.getMonth(), a.dayOfMonth) -
-        effectiveDayInMonth(now.getFullYear(), now.getMonth(), b.dayOfMonth),
+        effectiveDayInMonth(refDate.getFullYear(), refDate.getMonth(), a.dayOfMonth) -
+        effectiveDayInMonth(refDate.getFullYear(), refDate.getMonth(), b.dayOfMonth),
     )
 
   const pastAuto = lines.filter(
-    (l) => l.paymentMode === 'automatic' && isAutomaticDebitPastThisMonth(l.dayOfMonth, now),
+    (l) => l.paymentMode === 'automatic' && isAutomaticDebitPastThisMonth(l.dayOfMonth, refDate),
   )
 
   const formatCurrency = (n: number) => formatCurrencyAmount(n, i18n.language)
 
   const formatDueDate = (dayOfMonth: number) => {
-    const y = now.getFullYear()
-    const mi = now.getMonth()
+    const y = refDate.getFullYear()
+    const mi = refDate.getMonth()
     const day = effectiveDayInMonth(y, mi, dayOfMonth)
     return new Date(y, mi, day).toLocaleDateString(i18n.language, {
       day: 'numeric',
@@ -217,6 +220,7 @@ export default function AdvancedFinancePage() {
               <h1 className="text-3xl font-bold text-balance">{t('advancedFinance.title')}</h1>
               <p className="text-muted-foreground mt-1 max-w-3xl">{t('advancedFinance.subtitle')}</p>
               <p className="mt-2 text-sm font-medium text-primary capitalize">{t('advancedFinance.monthBadge', { month: monthLabel })}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{t('advancedFinance.monthFromDataHint')}</p>
             </div>
             {completionLoaded && manualLines.length > 0 && (
               <Button
@@ -260,7 +264,7 @@ export default function AdvancedFinancePage() {
                       </TableHeader>
                       <TableBody>
                         {upcomingAuto.map((row) => {
-                          const isToday = isAutomaticDebitDueToday(row.dayOfMonth, now)
+                          const isToday = isAutomaticDebitDueToday(row.dayOfMonth, refDate)
                           const dueLabel = isToday
                             ? t('advancedFinance.upcomingDueToday')
                             : t('advancedFinance.upcomingOnDate', { date: formatDueDate(row.dayOfMonth) })
@@ -408,7 +412,7 @@ export default function AdvancedFinancePage() {
                   <TableBody>
                     {detailGroup.lines.map((row) => {
                       const key = itemKey(row.kind, row.id)
-                      const due = manualTransferDueStatus(row.dayOfMonth, now)
+                      const due = manualTransferDueStatus(row.dayOfMonth, refDate)
                       const statusLabel =
                         due === 'past'
                           ? t('advancedFinance.manualStatusPast')

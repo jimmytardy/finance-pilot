@@ -1,16 +1,16 @@
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '@/lib/auth-options'
+import type { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getAuthenticatedUserId } from '@/lib/auth-user-from-request'
 import { bundleFromApiJson, bundleToApiJson } from '@/lib/simulator-payload'
 
-export async function GET() {
-  const session = await getServerSession(authOptions)
-  if (!session?.user?.id) {
+export async function GET(request: NextRequest) {
+  const userId = await getAuthenticatedUserId(request)
+  if (!userId) {
     return Response.json({ error: 'Non authentifié' }, { status: 401 })
   }
 
   const row = await prisma.simulatorState.findUnique({
-    where: { userId: session.user.id },
+    where: { userId },
   })
 
   if (!row) {
@@ -20,9 +20,9 @@ export async function GET() {
   return Response.json(row.payload)
 }
 
-export async function PUT(request: Request) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user?.id) {
+export async function PUT(request: NextRequest) {
+  const userId = await getAuthenticatedUserId(request)
+  if (!userId) {
     return Response.json({ error: 'Non authentifié' }, { status: 401 })
   }
 
@@ -41,9 +41,9 @@ export async function PUT(request: Request) {
   const payload = bundleToApiJson(bundle)
 
   await prisma.simulatorState.upsert({
-    where: { userId: session.user.id },
+    where: { userId },
     create: {
-      userId: session.user.id,
+      userId,
       payload,
     },
     update: { payload },

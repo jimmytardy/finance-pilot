@@ -1,13 +1,6 @@
 import type { ReactNode } from 'react'
-import { AuthenticatedNavigation } from '@/components/authenticated-navigation'
-import { SimulatorPersistenceBanner } from '@/components/simulator-persistence-banner'
+import { SimulatorAppChrome } from '@/components/simulator-app-chrome'
 
 export default function SimulateurLayout({ children }: { children: ReactNode }) {
-  return (
-    <>
-      <AuthenticatedNavigation />
-      <SimulatorPersistenceBanner />
-      {children}
-    </>
-  )
+  return <SimulatorAppChrome>{children}</SimulatorAppChrome>
 }

@@ -19,10 +19,17 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { useFinanceData } from '@/hooks/use-finance-data'
 import { useSavedProjects } from '@/hooks/use-saved-projects'
+import { useSimulatorWorkspace } from '@/contexts/simulator-workspace-context'
 import { buildInvestmentProjectionSeries } from '@/lib/investment-projection'
-import { getFinanceMetrics } from '@/lib/finance-metrics'
 import { formatCompactAmount, formatCurrencyAmount, projectionYearLabel } from '@/lib/i18n/locale'
-import { AlertTriangle, GitCompare } from 'lucide-react'
+import { formatMonthKeyLabel } from '@/lib/schedule-utils'
+import {
+  type CompareGranularity,
+  resolveCompareFinanceData,
+  resolveCompareMetrics,
+  uniqueYearsFromMonthKeys,
+} from '@/lib/comparaison-resolve'
+import { AlertTriangle, GitCompare, Info } from 'lucide-react'
 
 const DRAFT_SOURCE = 'draft'
 
@@ -30,41 +37,128 @@ type HorizonYears = 10 | 20 | 30
 
 export function ComparaisonView() {
   const { t, i18n } = useTranslation()
-  const { data: draftData, isLoaded: financeLoaded } = useFinanceData()
+  const { isLoaded: financeLoaded } = useFinanceData()
   const { projects, isLoaded: projectsLoaded } = useSavedProjects()
+  const { monthlySnapshots, sortedMonthKeys, activeMonthKey } = useSimulatorWorkspace()
 
   const [sourceA, setSourceA] = useState(DRAFT_SOURCE)
   const [sourceB, setSourceB] = useState('')
   const [horizonYears, setHorizonYears] = useState<HorizonYears>(20)
+  const [granularity, setGranularity] = useState<CompareGranularity>('month')
+  const [monthKeyA, setMonthKeyA] = useState('')
+  const [monthKeyB, setMonthKeyB] = useState('')
+  const [yearA, setYearA] = useState(() => new Date().getFullYear())
+  const [yearB, setYearB] = useState(() => new Date().getFullYear())
 
   const formatCurrency = (amount: number) => formatCurrencyAmount(amount, i18n.language)
   const formatCompact = (amount: number) => formatCompactAmount(amount, i18n.language)
+
+  const years = useMemo(() => uniqueYearsFromMonthKeys(monthlySnapshots), [monthlySnapshots])
 
   useEffect(() => {
     if (!financeLoaded || !projectsLoaded || sourceB) return
     setSourceB(projects[0]?.id ?? DRAFT_SOURCE)
   }, [financeLoaded, projectsLoaded, projects, sourceB])
 
+  useEffect(() => {
+    if (sortedMonthKeys.length === 0) return
+    setMonthKeyA((prev) => {
+      if (prev && sortedMonthKeys.includes(prev)) return prev
+      if (sortedMonthKeys.includes(activeMonthKey)) return activeMonthKey
+      return sortedMonthKeys[0]!
+    })
+    setMonthKeyB((prev) => {
+      if (prev && sortedMonthKeys.includes(prev)) return prev
+      const last = sortedMonthKeys[sortedMonthKeys.length - 1]!
+      if (last !== sortedMonthKeys[0]) return last
+      return sortedMonthKeys[0]!
+    })
+  }, [sortedMonthKeys, activeMonthKey])
+
+  useEffect(() => {
+    if (years.length === 0) return
+    setYearA((y) => (years.includes(y) ? y : years[years.length - 1]!))
+    setYearB((y) => (years.includes(y) ? y : years[0]!))
+  }, [years])
+
   const labelFor = (id: string) => {
     if (id === DRAFT_SOURCE) return t('comparaison.draft')
     return projects.find((p) => p.id === id)?.name ?? t('comparaison.projectFallback')
   }
 
-  const dataA = useMemo(() => {
-    if (sourceA === DRAFT_SOURCE) return draftData
-    return projects.find((p) => p.id === sourceA)?.data ?? draftData
-  }, [sourceA, draftData, projects])
+  const nameA = useMemo(() => {
+    const base = labelFor(sourceA)
+    if (sourceA !== DRAFT_SOURCE) return base
+    if (granularity === 'month') {
+      return monthKeyA ? `${base} — ${formatMonthKeyLabel(monthKeyA, i18n.language)}` : base
+    }
+    return `${base} — ${t('comparaison.yearShort', { year: yearA })}`
+  }, [sourceA, granularity, monthKeyA, yearA, i18n.language, projects, t])
 
-  const dataB = useMemo(() => {
-    if (sourceB === DRAFT_SOURCE) return draftData
-    return projects.find((p) => p.id === sourceB)?.data ?? draftData
-  }, [sourceB, draftData, projects])
+  const nameB = useMemo(() => {
+    const base = labelFor(sourceB)
+    if (sourceB !== DRAFT_SOURCE) return base
+    if (granularity === 'month') {
+      return monthKeyB ? `${base} — ${formatMonthKeyLabel(monthKeyB, i18n.language)}` : base
+    }
+    return `${base} — ${t('comparaison.yearShort', { year: yearB })}`
+  }, [sourceB, granularity, monthKeyB, yearB, i18n.language, projects, t])
 
-  const nameA = labelFor(sourceA)
-  const nameB = labelFor(sourceB)
+  const dataA = useMemo(
+    () =>
+      resolveCompareFinanceData({
+        sourceId: sourceA,
+        draftToken: DRAFT_SOURCE,
+        granularity,
+        draftMonthKey: monthKeyA,
+        draftYear: yearA,
+        monthlySnapshots,
+        projects,
+      }),
+    [sourceA, granularity, monthKeyA, yearA, monthlySnapshots, projects],
+  )
 
-  const metricsA = useMemo(() => getFinanceMetrics(dataA), [dataA])
-  const metricsB = useMemo(() => getFinanceMetrics(dataB), [dataB])
+  const dataB = useMemo(
+    () =>
+      resolveCompareFinanceData({
+        sourceId: sourceB,
+        draftToken: DRAFT_SOURCE,
+        granularity,
+        draftMonthKey: monthKeyB,
+        draftYear: yearB,
+        monthlySnapshots,
+        projects,
+      }),
+    [sourceB, granularity, monthKeyB, yearB, monthlySnapshots, projects],
+  )
+
+  const metricsA = useMemo(
+    () =>
+      resolveCompareMetrics({
+        sourceId: sourceA,
+        draftToken: DRAFT_SOURCE,
+        granularity,
+        draftMonthKey: monthKeyA,
+        draftYear: yearA,
+        monthlySnapshots,
+        projects,
+      }),
+    [sourceA, granularity, monthKeyA, yearA, monthlySnapshots, projects],
+  )
+
+  const metricsB = useMemo(
+    () =>
+      resolveCompareMetrics({
+        sourceId: sourceB,
+        draftToken: DRAFT_SOURCE,
+        granularity,
+        draftMonthKey: monthKeyB,
+        draftYear: yearB,
+        monthlySnapshots,
+        projects,
+      }),
+    [sourceB, granularity, monthKeyB, yearB, monthlySnapshots, projects],
+  )
 
   const seriesA = useMemo(
     () => buildInvestmentProjectionSeries(dataA.investments, horizonYears),
@@ -82,7 +176,7 @@ export function ComparaisonView() {
       portfolioB: seriesB[i]?.portfolioValue ?? 0,
       delta: row.portfolioValue - (seriesB[i]?.portfolioValue ?? 0),
     }))
-  }, [seriesA, seriesB, t, i18n.language])
+  }, [seriesA, seriesB, t])
 
   const endA = seriesA[seriesA.length - 1]?.portfolioValue ?? 0
   const endB = seriesB[seriesB.length - 1]?.portfolioValue ?? 0
@@ -95,10 +189,16 @@ export function ComparaisonView() {
     [nameA, nameB],
   )
 
-  const sameSource = sourceA === sourceB
+  const sameSource =
+    sourceA === sourceB &&
+    (sourceA !== DRAFT_SOURCE || (granularity === 'month' ? monthKeyA === monthKeyB : yearA === yearB))
+
   const noInvestmentsBoth = dataA.investments.length === 0 && dataB.investments.length === 0
 
   const ready = financeLoaded && projectsLoaded && sourceB !== ''
+
+  const showYearHint =
+    granularity === 'year' && (sourceA === DRAFT_SOURCE || sourceB === DRAFT_SOURCE)
 
   if (!ready) {
     return (
@@ -127,11 +227,38 @@ export function ComparaisonView() {
           </div>
         </header>
 
+        <section className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">{t('comparaison.granularityLabel')}</Label>
+            <Tabs
+              value={granularity}
+              onValueChange={(v) => setGranularity(v as CompareGranularity)}
+            >
+              <TabsList className="h-9">
+                <TabsTrigger value="month" className="px-3 text-xs">
+                  {t('comparaison.granularityMonth')}
+                </TabsTrigger>
+                <TabsTrigger value="year" className="px-3 text-xs">
+                  {t('comparaison.granularityYear')}
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+        </section>
+
         {projects.length === 0 && (
           <Alert className="mb-6">
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>{t('comparaison.alertNoProjectsTitle')}</AlertTitle>
             <AlertDescription>{t('comparaison.alertNoProjectsBody')}</AlertDescription>
+          </Alert>
+        )}
+
+        {showYearHint && (
+          <Alert className="mb-6 border-primary/20 bg-primary/5">
+            <Info className="h-4 w-4 text-primary" />
+            <AlertTitle>{t('comparaison.yearHintTitle')}</AlertTitle>
+            <AlertDescription>{t('comparaison.yearHintBody')}</AlertDescription>
           </Alert>
         )}
 
@@ -144,54 +271,36 @@ export function ComparaisonView() {
         )}
 
         <section className="mb-8 grid gap-4 md:grid-cols-2">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">{t('comparaison.scenarioA')}</CardTitle>
-              <CardDescription>{t('comparaison.scenarioADesc')}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Label htmlFor="source-a" className="text-xs text-muted-foreground">
-                {t('comparaison.source')}
-              </Label>
-              <Select value={sourceA} onValueChange={setSourceA}>
-                <SelectTrigger id="source-a" className="w-full max-w-md">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={DRAFT_SOURCE}>{t('comparaison.draft')}</SelectItem>
-                  {projects.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">{t('comparaison.scenarioB')}</CardTitle>
-              <CardDescription>{t('comparaison.scenarioBDesc')}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Label htmlFor="source-b" className="text-xs text-muted-foreground">
-                {t('comparaison.source')}
-              </Label>
-              <Select value={sourceB} onValueChange={setSourceB}>
-                <SelectTrigger id="source-b" className="w-full max-w-md">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={DRAFT_SOURCE}>{t('comparaison.draft')}</SelectItem>
-                  {projects.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </CardContent>
-          </Card>
+          <CompareSideCard
+            title={t('comparaison.scenarioA')}
+            description={t('comparaison.scenarioADesc')}
+            sourceId={sourceA}
+            onSourceChange={setSourceA}
+            granularity={granularity}
+            monthKey={monthKeyA}
+            onMonthKeyChange={setMonthKeyA}
+            year={yearA}
+            onYearChange={setYearA}
+            sortedMonthKeys={sortedMonthKeys}
+            years={years}
+            draftToken={DRAFT_SOURCE}
+            projects={projects}
+          />
+          <CompareSideCard
+            title={t('comparaison.scenarioB')}
+            description={t('comparaison.scenarioBDesc')}
+            sourceId={sourceB}
+            onSourceChange={setSourceB}
+            granularity={granularity}
+            monthKey={monthKeyB}
+            onMonthKeyChange={setMonthKeyB}
+            year={yearB}
+            onYearChange={setYearB}
+            sortedMonthKeys={sortedMonthKeys}
+            years={years}
+            draftToken={DRAFT_SOURCE}
+            projects={projects}
+          />
         </section>
 
         <section className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -200,24 +309,28 @@ export function ComparaisonView() {
             a={metricsA.monthlyBalance}
             b={metricsB.monthlyBalance}
             format={formatCurrency}
+            footnote={granularity === 'year' ? t('comparaison.cardYearSumFootnote') : undefined}
           />
           <MetricCompareCard
             title={t('comparaison.cardAvailable')}
             a={metricsA.availableToInvest}
             b={metricsB.availableToInvest}
             format={formatCurrency}
+            footnote={granularity === 'year' ? t('comparaison.cardYearSumFootnote') : undefined}
           />
           <MetricCompareCard
             title={t('comparaison.cardRental')}
             a={metricsA.totalRentalNetResult}
             b={metricsB.totalRentalNetResult}
             format={formatCurrency}
+            footnote={granularity === 'year' ? t('comparaison.cardYearSumFootnote') : undefined}
           />
           <MetricCompareCard
             title={t('comparaison.cardPortfolioToday')}
             a={metricsA.totalInvestmentValue}
             b={metricsB.totalInvestmentValue}
             format={formatCurrency}
+            footnote={granularity === 'year' ? t('comparaison.cardPortfolioYearFootnote') : undefined}
           />
         </section>
 
@@ -351,22 +464,133 @@ export function ComparaisonView() {
   )
 }
 
+function CompareSideCard({
+  title,
+  description,
+  sourceId,
+  onSourceChange,
+  granularity,
+  monthKey,
+  onMonthKeyChange,
+  year,
+  onYearChange,
+  sortedMonthKeys,
+  years,
+  draftToken,
+  projects,
+}: {
+  title: string
+  description: string
+  sourceId: string
+  onSourceChange: (id: string) => void
+  granularity: CompareGranularity
+  monthKey: string
+  onMonthKeyChange: (k: string) => void
+  year: number
+  onYearChange: (y: number) => void
+  sortedMonthKeys: string[]
+  years: number[]
+  draftToken: string
+  projects: { id: string; name: string }[]
+}) {
+  const { t, i18n } = useTranslation()
+  const isDraft = sourceId === draftToken
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Label className="text-xs text-muted-foreground">{t('comparaison.source')}</Label>
+          <Select value={sourceId} onValueChange={onSourceChange}>
+            <SelectTrigger className="w-full max-w-md">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={draftToken}>{t('comparaison.draft')}</SelectItem>
+              {projects.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {isDraft && granularity === 'month' && sortedMonthKeys.length === 0 && (
+          <p className="text-xs text-amber-700 dark:text-amber-500/90">{t('comparaison.noDraftMonths')}</p>
+        )}
+
+        {isDraft && granularity === 'month' && sortedMonthKeys.length > 0 && (
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground">{t('comparaison.draftMonth')}</Label>
+            <Select value={monthKey} onValueChange={onMonthKeyChange}>
+              <SelectTrigger className="w-full max-w-md">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {sortedMonthKeys.map((k) => (
+                  <SelectItem key={k} value={k}>
+                    {formatMonthKeyLabel(k, i18n.language)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {isDraft && granularity === 'year' && years.length === 0 && (
+          <p className="text-xs text-amber-700 dark:text-amber-500/90">{t('comparaison.noDraftYears')}</p>
+        )}
+
+        {isDraft && granularity === 'year' && years.length > 0 && (
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground">{t('comparaison.draftYear')}</Label>
+            <Select value={String(year)} onValueChange={(v) => onYearChange(Number(v))}>
+              <SelectTrigger className="w-full max-w-md">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {years.map((y) => (
+                  <SelectItem key={y} value={String(y)}>
+                    {t('comparaison.yearShort', { year: y })}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {!isDraft && (
+          <p className="text-xs text-muted-foreground leading-snug">{t('comparaison.projectSnapshotNote')}</p>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 function MetricCompareCard({
   title,
   a,
   b,
   format,
+  footnote,
 }: {
   title: string
   a: number
   b: number
   format: (n: number) => string
+  footnote?: string
 }) {
   const { t } = useTranslation()
   return (
     <Card className="border-border/80">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
+        {footnote ? <CardDescription className="text-[11px] leading-snug">{footnote}</CardDescription> : null}
       </CardHeader>
       <CardContent className="space-y-2 text-sm">
         <div className="flex justify-between gap-2">

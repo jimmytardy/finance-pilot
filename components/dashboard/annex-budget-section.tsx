@@ -25,7 +25,8 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { GripVertical, Plus, Pencil, Trash2, Wallet } from 'lucide-react'
-import type { AnnexBudget, ExpenseSchedule } from '@/lib/types'
+import type { AnnexBudget, CashflowFrequency, ExpenseSchedule } from '@/lib/types'
+import { normalizeDayOfMonth, toMonthlyCashflowAmount } from '@/lib/cashflow-frequency'
 import { formatCurrencyAmount } from '@/lib/i18n/locale'
 import { ScheduleEditor } from '@/components/dashboard/schedule-editor'
 
@@ -81,8 +82,12 @@ function SortableAnnexBudgetRow({
         <div className="flex min-w-0 flex-col">
           <span className="truncate font-medium">{budget.label}</span>
           <span className="text-xs text-muted-foreground">
-            {budget.frequency === 'annual' ? t('common.annual') : t('common.monthly')}
-            {budget.frequency === 'annual' && (
+            {budget.frequency === 'monthly'
+              ? t('common.monthly')
+              : budget.frequency === 'quarterly'
+                ? t('common.quarterly')
+                : t('common.annual')}
+            {budget.frequency !== 'monthly' && (
               <span className="ml-1">({formatCurrency(getMonthlyAmount(budget))}{t('common.perMonth')})</span>
             )}
             {budget.schedule && (
@@ -128,7 +133,7 @@ export function AnnexBudgetSection({
   const [editingId, setEditingId] = useState<string | null>(null)
   const [label, setLabel] = useState('')
   const [amount, setAmount] = useState('')
-  const [frequency, setFrequency] = useState<'monthly' | 'annual'>('monthly')
+  const [frequency, setFrequency] = useState<CashflowFrequency>('monthly')
   const [scheduleForm, setScheduleForm] = useState<ExpenseSchedule | undefined>(undefined)
 
   const formatCurrency = (amount: number) => formatCurrencyAmount(amount, i18n.language)
@@ -140,7 +145,7 @@ export function AnnexBudgetSection({
     return {
       category: cat,
       paymentMode: scheduleForm.paymentMode,
-      dayOfMonth: Math.min(31, Math.max(1, scheduleForm.dayOfMonth)),
+      dayOfMonth: normalizeDayOfMonth(scheduleForm.dayOfMonth),
     }
   }
 
@@ -181,9 +186,8 @@ export function AnnexBudgetSection({
     setIsAddOpen(true)
   }
 
-  const getMonthlyAmount = (budget: AnnexBudget) => {
-    return budget.frequency === 'annual' ? budget.amount / 12 : budget.amount
-  }
+  const getMonthlyAmount = (budget: AnnexBudget) =>
+    toMonthlyCashflowAmount(budget.amount, budget.frequency)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -244,12 +248,13 @@ export function AnnexBudgetSection({
               </div>
               <div className="flex flex-col gap-2">
                 <Label>{t('common.frequency')}</Label>
-                <Select value={frequency} onValueChange={(v) => setFrequency(v as 'monthly' | 'annual')}>
+                <Select value={frequency} onValueChange={(v) => setFrequency(v as CashflowFrequency)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="monthly">{t('common.monthly')}</SelectItem>
+                    <SelectItem value="quarterly">{t('common.quarterly')}</SelectItem>
                     <SelectItem value="annual">{t('common.annual')}</SelectItem>
                   </SelectContent>
                 </Select>

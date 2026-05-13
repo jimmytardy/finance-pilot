@@ -1,13 +1,27 @@
 import type {
   AnnexBudget,
+  CashflowFrequency,
   ExpenseSchedule,
   FinanceData,
   FixedExpense,
   RentalProperty,
   RentalPropertyAddress,
+  Revenue,
   SavedProject,
 } from '@/lib/types'
 import { EMPTY_FINANCE_DATA } from '@/lib/finance-defaults'
+import { normalizeDayOfMonth } from '@/lib/cashflow-frequency'
+
+function parseDayOfMonthFromRaw(raw: unknown): number {
+  if (raw === '' || raw === null || raw === undefined) return 1
+  if (typeof raw === 'number') return normalizeDayOfMonth(raw)
+  if (typeof raw === 'string') {
+    const t = raw.trim()
+    if (t === '') return 1
+    return normalizeDayOfMonth(Number(t))
+  }
+  return 1
+}
 
 function normalizeExpenseSchedule(raw: unknown): ExpenseSchedule | undefined {
   if (!raw || typeof raw !== 'object') return undefined
@@ -16,11 +30,26 @@ function normalizeExpenseSchedule(raw: unknown): ExpenseSchedule | undefined {
   const category = typeof s.category === 'string' ? s.category.trim() : ''
   const paymentMode =
     s.paymentMode === 'manual' || s.paymentMode === 'automatic' ? s.paymentMode : undefined
-  const dayRaw = typeof s.dayOfMonth === 'number' ? s.dayOfMonth : Number(s.dayOfMonth)
-  if (!paymentMode || !Number.isFinite(dayRaw)) return undefined
-  const day = Math.floor(dayRaw)
-  if (day < 1 || day > 31) return undefined
+  if (!paymentMode) return undefined
+  const day = parseDayOfMonthFromRaw(s.dayOfMonth)
   return { category, paymentMode, dayOfMonth: day }
+}
+
+function normalizeCashflowFrequency(raw: unknown): CashflowFrequency {
+  if (raw === 'annual' || raw === 'quarterly' || raw === 'monthly') return raw
+  return 'monthly'
+}
+
+function normalizeRevenue(raw: unknown): Revenue {
+  if (!raw || typeof raw !== 'object') {
+    return { id: crypto.randomUUID(), label: '', amount: 0, frequency: 'monthly' }
+  }
+  const e = raw as Record<string, unknown>
+  const id = typeof e.id === 'string' ? e.id : crypto.randomUUID()
+  const label = typeof e.label === 'string' ? e.label : ''
+  const amount = typeof e.amount === 'number' ? e.amount : Number(e.amount) || 0
+  const frequency = normalizeCashflowFrequency(e.frequency)
+  return { id, label, amount, frequency }
 }
 
 function normalizeFixedExpense(raw: unknown): FixedExpense {
@@ -31,8 +60,7 @@ function normalizeFixedExpense(raw: unknown): FixedExpense {
   const id = typeof e.id === 'string' ? e.id : crypto.randomUUID()
   const label = typeof e.label === 'string' ? e.label : ''
   const amount = typeof e.amount === 'number' ? e.amount : Number(e.amount) || 0
-  const frequency =
-    e.frequency === 'annual' || e.frequency === 'monthly' ? e.frequency : 'monthly'
+  const frequency = normalizeCashflowFrequency(e.frequency)
   const schedule = normalizeExpenseSchedule(e.schedule)
   const out: FixedExpense = { id, label, amount, frequency }
   if (schedule) out.schedule = schedule
@@ -47,8 +75,7 @@ function normalizeAnnexBudget(raw: unknown): AnnexBudget {
   const id = typeof e.id === 'string' ? e.id : crypto.randomUUID()
   const label = typeof e.label === 'string' ? e.label : ''
   const amount = typeof e.amount === 'number' ? e.amount : Number(e.amount) || 0
-  const frequency =
-    e.frequency === 'annual' || e.frequency === 'monthly' ? e.frequency : 'monthly'
+  const frequency = normalizeCashflowFrequency(e.frequency)
   const schedule = normalizeExpenseSchedule(e.schedule)
   const out: AnnexBudget = { id, label, amount, frequency }
   if (schedule) out.schedule = schedule
@@ -73,7 +100,7 @@ export function normalizeFinanceData(raw: unknown): FinanceData {
   }
   const o = raw as Record<string, unknown>
   return {
-    revenues: Array.isArray(o.revenues) ? (o.revenues as FinanceData['revenues']) : [],
+    revenues: Array.isArray(o.revenues) ? (o.revenues as unknown[]).map(normalizeRevenue) : [],
     fixedExpenses: Array.isArray(o.fixedExpenses)
       ? (o.fixedExpenses as unknown[]).map(normalizeFixedExpense)
       : [],
