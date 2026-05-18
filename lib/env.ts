@@ -9,6 +9,7 @@ import { z } from 'zod'
  * - NEXT_PUBLIC_MATOMO_URL, NEXT_PUBLIC_MATOMO_SITE_ID
  * - DATABASE_URL, NEXTAUTH_SECRET
  * - GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
+ * - MISTRAL_API_KEY (optionnel : extraction IA fiche de paye ; non lu par le middleware)
  *
  * Le code serveur ne doit lire que ces valeurs via `getCanonicalEnv()` (les handlers Edge
  * comme le middleware ne lisent que `NEXTAUTH_SECRET` via `getNextAuthSecret()`).
@@ -29,6 +30,12 @@ const matomoUrl = z.preprocess((v) => {
     console.warn('[env] NEXT_PUBLIC_MATOMO_URL ignoré (URL invalide).')
     return undefined
   }
+}, z.string().optional())
+
+const optionalTrimmedSecret = z.preprocess((v) => {
+  if (typeof v !== 'string') return undefined
+  const t = v.trim()
+  return t.length > 0 ? t : undefined
 }, z.string().optional())
 
 const matomoSiteId = z.preprocess((v) => {
@@ -63,6 +70,7 @@ export const canonicalEnvSchema = z.object({
     (v) => (typeof v === 'string' ? v.trim() : v),
     z.string().min(1, 'GOOGLE_CLIENT_SECRET requis'),
   ),
+  MISTRAL_API_KEY: optionalTrimmedSecret,
 })
 
 export type CanonicalEnv = z.infer<typeof canonicalEnvSchema>
@@ -79,6 +87,7 @@ function readCanonicalEnvFromProcess(): unknown {
     NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
     GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
+    MISTRAL_API_KEY: process.env.MISTRAL_API_KEY,
   }
 }
 

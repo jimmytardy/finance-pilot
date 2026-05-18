@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   const rows = await prisma.salaryMonth.findMany({
     where: { userId },
     orderBy: [{ year: 'asc' }, { month: 'asc' }],
-    include: { bonuses: true },
+    include: { bonuses: true, nonIncludedPrimes: true },
   })
 
   return Response.json(rows.map(serializeSalaryMonth))
@@ -72,14 +72,14 @@ export async function POST(request: NextRequest) {
       primesIndemnitesNonIncluses: new Prisma.Decimal(decimals.primesIndemnitesNonIncluses),
       explanation: d.explanation ?? null,
     },
-    include: { bonuses: true },
+    include: { bonuses: true, nonIncludedPrimes: true },
   })
 
   await reconcileSalaryMonthsForUser(userId)
 
   const row = await prisma.salaryMonth.findFirstOrThrow({
     where: { id: created.id },
-    include: { bonuses: true },
+    include: { bonuses: true, nonIncludedPrimes: true },
   })
   return Response.json(serializeSalaryMonth(row))
 }

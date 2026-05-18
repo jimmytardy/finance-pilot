@@ -69,14 +69,14 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
       primesIndemnitesIncluses: new Prisma.Decimal(decimals.primesIndemnitesIncluses),
       primesIndemnitesNonIncluses: new Prisma.Decimal(decimals.primesIndemnitesNonIncluses),
     },
-    include: { bonuses: true },
+    include: { bonuses: true, nonIncludedPrimes: true },
   })
 
   await reconcileSalaryMonthsForUser(userId)
 
   const row = await prisma.salaryMonth.findFirstOrThrow({
     where: { id },
-    include: { bonuses: true },
+    include: { bonuses: true, nonIncludedPrimes: true },
   })
   return Response.json(serializeSalaryMonth(row))
 }

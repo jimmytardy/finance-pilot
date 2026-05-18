@@ -1,5 +1,5 @@
 import type { Prisma } from '@prisma/client'
-import type { SalaryBonus, SalaryMonth } from '@prisma/client'
+import type { SalaryBonus, SalaryMonth, SalaryNonIncludedPrime } from '@prisma/client'
 
 export function dec(v: Prisma.Decimal | null | undefined): string {
   if (v == null) return '0'
@@ -20,7 +20,21 @@ export function serializeBonus(b: SalaryBonus) {
   }
 }
 
-export function serializeSalaryMonth(m: SalaryMonth & { bonuses?: SalaryBonus[] }) {
+export function serializeNonIncludedPrime(p: SalaryNonIncludedPrime) {
+  return {
+    id: p.id,
+    salaryMonthId: p.salaryMonthId,
+    category: p.category,
+    description: p.description,
+    amount: dec(p.amount),
+    createdAt: p.createdAt.toISOString(),
+    updatedAt: p.updatedAt.toISOString(),
+  }
+}
+
+export function serializeSalaryMonth(
+  m: SalaryMonth & { bonuses?: SalaryBonus[]; nonIncludedPrimes?: SalaryNonIncludedPrime[] },
+) {
   return {
     id: m.id,
     userId: m.userId,
@@ -38,6 +52,7 @@ export function serializeSalaryMonth(m: SalaryMonth & { bonuses?: SalaryBonus[] 
     createdAt: m.createdAt.toISOString(),
     updatedAt: m.updatedAt.toISOString(),
     bonuses: (m.bonuses ?? []).map(serializeBonus),
+    nonIncludedPrimes: (m.nonIncludedPrimes ?? []).map(serializeNonIncludedPrime),
   }
 }
 

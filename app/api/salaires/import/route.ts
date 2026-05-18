@@ -5,6 +5,7 @@ import { getAuthenticatedUserId } from '@/lib/auth-user-from-request'
 import { parseSalaryCsvBuffer } from '@/lib/salary-csv-import'
 import { toPrismaDecimalString } from '@/lib/salary-schemas'
 import { reconcileSalaryMonthsForUser } from '@/lib/salary-employer-period'
+import { syncMonthNonInclusesSum } from '@/lib/salary-non-included-sync'
 
 export async function POST(request: NextRequest) {
   const userId = await getAuthenticatedUserId(request)
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
 
   let imported = 0
   for (const r of rows) {
-    await prisma.salaryMonth.upsert({
+    const month = await prisma.salaryMonth.upsert({
       where: {
         userId_year_month: { userId, year: r.year, month: r.month },
       },
@@ -44,7 +45,7 @@ export async function POST(request: NextRequest) {
         prelevementSource: new Prisma.Decimal(toPrismaDecimalString(r.prelevementSource)),
         ticketRestaurant: new Prisma.Decimal(toPrismaDecimalString(r.ticketRestaurant)),
         primesIndemnitesIncluses: new Prisma.Decimal(toPrismaDecimalString(r.primesIndemnitesIncluses)),
-        primesIndemnitesNonIncluses: new Prisma.Decimal(toPrismaDecimalString(r.primesIndemnitesNonIncluses)),
+        primesIndemnitesNonIncluses: new Prisma.Decimal('0'),
         explanation: r.explanation,
       },
       update: {
@@ -54,10 +55,22 @@ export async function POST(request: NextRequest) {
         prelevementSource: new Prisma.Decimal(toPrismaDecimalString(r.prelevementSource)),
         ticketRestaurant: new Prisma.Decimal(toPrismaDecimalString(r.ticketRestaurant)),
         primesIndemnitesIncluses: new Prisma.Decimal(toPrismaDecimalString(r.primesIndemnitesIncluses)),
-        primesIndemnitesNonIncluses: new Prisma.Decimal(toPrismaDecimalString(r.primesIndemnitesNonIncluses)),
         explanation: r.explanation,
       },
     })
+    await prisma.salaryNonIncludedPrime.deleteMany({ where: { salaryMonthId: month.id } })
+    const ni = Number(toPrismaDecimalString(r.primesIndemnitesNonIncluses))
+    if (ni > 0) {
+      await prisma.salaryNonIncludedPrime.create({
+        data: {
+          salaryMonthId: month.id,
+          category: 'Import CSV',
+          description: '',
+          amount: new Prisma.Decimal(toPrismaDecimalString(r.primesIndemnitesNonIncluses)),
+        },
+      })
+    }
+    await syncMonthNonInclusesSum(month.id)
     imported += 1
   }
 

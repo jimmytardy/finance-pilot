@@ -122,9 +122,23 @@ model SalaryMonth {
   createdAt                    DateTime      @default(now())
   updatedAt                    DateTime      @updatedAt
   bonuses                      SalaryBonus[]
+  nonIncludedPrimes            SalaryNonIncludedPrime[]
 
   @@unique([userId, year, month])
   @@index([userId, year])
+}
+
+model SalaryNonIncludedPrime {
+  id            String      @id @default(cuid())
+  salaryMonthId String
+  salaryMonth   SalaryMonth @relation(fields: [salaryMonthId], references: [id], onDelete: Cascade)
+  category      String
+  description   String      @default("")
+  amount        Decimal     @db.Decimal(14, 2)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([salaryMonthId])
 }
 
 model SalaryBonus {

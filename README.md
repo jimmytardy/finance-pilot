@@ -37,6 +37,7 @@ Le simulateur est **utilisable sans compte** (données en session navigateur). A
 - **Export / import JSON** (page Données).
 - **Connexion Google** (optionnelle) et API **`/api/simulator/state`** pour un état JSON unique par utilisateur (Prisma).
 - **Matomo** optionnel via variables `NEXT_PUBLIC_*` (voir [Analytics](#analytics-matomo)).
+- **Salaires** : saisie mensuelle, import CSV ; extraction optionnelle depuis une **fiche de paye** (PDF/image) via **Mistral Document AI** si `MISTRAL_API_KEY` est configuré.
 
 ---
 
@@ -112,6 +113,7 @@ L’application ne lit **que** les variables validées dans **`lib/env.ts`** (`g
 | `NEXTAUTH_URL` | URL publique de l’app (sans slash final) : OAuth **et** base des URL absolues (métadonnées, sitemap, `robots.txt`) |
 | `NEXTAUTH_SECRET` | Secret NextAuth (**obligatoire au runtime** dans le conteneur ; non figé dans l’image standalone) |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | OAuth Google |
+| `MISTRAL_API_KEY` | Optionnel : extraction IA d’une fiche de paye (Mistral Document AI). Si absent ou vide, le bouton « À partir d’une fiche de paye » est masqué. Clé serveur uniquement — créer un compte [Mistral Studio](https://console.mistral.ai) (plan **Experiment**, gratuit pour prototypage). |
 
 Le middleware Edge ne lit que **`NEXTAUTH_SECRET`** (via `getNextAuthSecret()`). Lors du **`pnpm build`** dans le Dockerfile, **`SKIP_ENV_VALIDATION=1`** permet un jeu factice ; l’exécution réelle exige un `.env` / variables complètes.
 

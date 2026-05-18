@@ -25,6 +25,12 @@ export const salaryBonusBodySchema = z.object({
   flow: z.nativeEnum(SalaryBonusFlow),
 })
 
+export const salaryNonIncludedPrimeBodySchema = z.object({
+  category: z.string().min(1).max(200),
+  description: z.string().max(2000).optional().default(''),
+  amount: decimalLike,
+})
+
 export const employerBodySchema = z.object({
   name: z.string().min(1).max(300),
 })

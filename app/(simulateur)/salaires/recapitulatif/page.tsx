@@ -7,7 +7,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { ChartContainer, type ChartConfig } from '@/components/ui/chart'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { formatCurrencyAmount } from '@/lib/i18n/locale'
+import { yearlyIncomeRecapFromApiMonths } from '@/lib/salary-recap-income'
 import { sumSerializedNetBonuses } from '@/lib/salary-net-with-bonuses'
 import type { TooltipProps } from 'recharts'
 
@@ -116,6 +125,7 @@ export default function SalairesRecapitulatifPage() {
   const locale = i18n.language
   const [granularity, setGranularity] = useState<Granularity>('year')
   const [rows, setRows] = useState<MonthRow[] | null>(null)
+  const [apiMonths, setApiMonths] = useState<unknown>(null)
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
@@ -125,19 +135,24 @@ export default function SalairesRecapitulatifPage() {
       if (!res.ok) {
         setError(t('salaries.loadError'))
         setRows([])
+        setApiMonths([])
         return
       }
       const json: unknown = await res.json()
+      setApiMonths(json)
       setRows(mapApiToMonthRows(json))
     } catch {
       setError(t('salaries.loadError'))
       setRows([])
+      setApiMonths([])
     }
   }, [t])
 
   useEffect(() => {
     void load()
   }, [load])
+
+  const yearlyIncomeRows = useMemo(() => yearlyIncomeRecapFromApiMonths(apiMonths), [apiMonths])
 
   const chartData = useMemo(() => {
     if (!rows?.length) return []
@@ -173,11 +188,60 @@ export default function SalairesRecapitulatifPage() {
   const xBusy = chartData.length > 14
 
   return (
-    <main className="mx-auto max-w-5xl space-y-6 px-4 py-8 sm:px-5 md:px-6">
+    <main className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-5 md:px-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">{t('salaries.recapTitle')}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{t('salaries.recapLead')}</p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">{t('salaries.recapYearlyIncomeTitle')}</CardTitle>
+          <CardDescription>{t('salaries.recapYearlyIncomeLead')}</CardDescription>
+        </CardHeader>
+        <CardContent className="overflow-x-auto">
+          {loading ? (
+            <Skeleton className="h-32 w-full rounded-md" />
+          ) : error ? (
+            <p className="text-sm text-destructive">{error}</p>
+          ) : yearlyIncomeRows.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t('salaries.noData')}</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t('salaries.colYear')}</TableHead>
+                  <TableHead className="text-right">{t('salaries.recapColMonthsCount')}</TableHead>
+                  <TableHead className="text-right">{t('salaries.recapAvgHorsImpotsSansPrimes')}</TableHead>
+                  <TableHead className="text-right">{t('salaries.recapAvgHorsImpotsAvecPrimes')}</TableHead>
+                  <TableHead className="text-right">{t('salaries.recapAvgAvecImpotsSansPrimes')}</TableHead>
+                  <TableHead className="text-right">{t('salaries.recapAvgAvecImpotsAvecPrimes')}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {yearlyIncomeRows.map((r) => (
+                  <TableRow key={r.year}>
+                    <TableCell className="font-medium">{r.year}</TableCell>
+                    <TableCell className="text-right tabular-nums">{r.monthsWorked}</TableCell>
+                    <TableCell className="text-right font-mono tabular-nums">
+                      {formatCurrencyAmount(r.avgHorsImpotsSansPrimes, locale)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono tabular-nums">
+                      {formatCurrencyAmount(r.avgHorsImpotsAvecPrimes, locale)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono tabular-nums">
+                      {formatCurrencyAmount(r.avgAvecImpotsSansPrimes, locale)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono tabular-nums">
+                      {formatCurrencyAmount(r.avgAvecImpotsAvecPrimes, locale)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="space-y-3">

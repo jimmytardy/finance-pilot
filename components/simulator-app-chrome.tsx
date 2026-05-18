@@ -49,7 +49,7 @@ export function SimulatorAppChrome({ children }: { children: ReactNode }) {
     [router, section],
   )
 
-  if (status !== 'authenticated') {
+  if (status === 'unauthenticated') {
     return <>{children}</>
   }
 

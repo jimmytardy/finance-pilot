@@ -47,7 +47,7 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet'
 
-/** Aucun lien « Accueil » : 1re entrée = Données (/donnees), icône base de données (pas maison). */
+/** Aucun lien « Accueil » : 1re entrée = Saisie (/donnees), icône base de données (pas maison). */
 export const simulatorNavItems = [
   { href: '/donnees', labelKey: 'navigation.data' as const, icon: Database },
   { href: '/gestion-mensuel', labelKey: 'navigation.advancedFinance' as const, icon: Wallet },

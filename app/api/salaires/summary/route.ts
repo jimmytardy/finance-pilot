@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
 
   const months = await prisma.salaryMonth.findMany({
     where: { userId },
-    include: { bonuses: true },
+    include: { bonuses: true, nonIncludedPrimes: true },
     orderBy: [{ year: 'asc' }, { month: 'asc' }],
   })
 
