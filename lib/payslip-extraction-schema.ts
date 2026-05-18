@@ -54,46 +54,51 @@ export const payslipExtractionJsonSchema = {
     isPayslip: {
       type: 'boolean',
       description:
-        'true si le document est une fiche de paye / bulletin de salaire français ; false pour tout autre document (facture, photo, contrat, etc.)',
+        'true si bulletin de salaire français (employeur, salarié, cotisations) ; false sinon',
     },
-    year: { type: 'integer', description: 'Année du bulletin (ex. 2025)' },
-    month: { type: 'integer', description: 'Mois du bulletin 1-12' },
+    year: { type: 'integer', description: 'Année (ex. 2026)' },
+    month: { type: 'integer', description: 'Mois 1-12' },
     brut: {
       type: 'string',
       description:
-        'Salaire brut du mois tel que sur le bulletin, INCLUANT congés payés et indemnité kilométrique, HORS primes listées dans bonuses',
+        'Montant exact de la ligne « Salaire brut » dans Éléments de paie (PAS « Salaire de base » seul, PAS la colonne Brut du bandeau). Ex. mars 2026 : 3575.00',
     },
     netImposable: {
       type: 'string',
-      description: 'Net imposable du bulletin (incluant congés payés et IK si présents sur la fiche)',
+      description:
+        'Net imposable mensuel : valeur sous « Net imposable » dans le bandeau récap (ligne Mensuel), OU base (2e montant) de la ligne « Impôt sur le revenu prélevé à la source - PAS ». Ex. mars 2026 : 2925.13',
     },
     netPaye: {
       type: 'string',
-      description: 'Net payé du bulletin (hors tickets restaurant)',
+      description:
+        'Montant de la ligne « Net payé » (ou « Net payé : X euros » en bas). Hors tickets restaurant. Ex. mars 2026 : 2588.51',
     },
-    prelevementSource: { type: 'string', description: 'Prélèvement à la source' },
+    prelevementSource: {
+      type: 'string',
+      description:
+        'Montant déduit sur la ligne PAS (colonne A déduire), valeur positive. Ex. mars 2026 : 155.03',
+    },
     ticketRestaurantCount: {
       type: 'integer',
-      description:
-        'Nombre de tickets restaurant indiqué sur le bulletin (colonne quantité / base, pas le montant en euros)',
+      description: 'Base (1er nombre) de la ligne « Titres-restaurant ». Ex. 18',
     },
     ticketRestaurant: {
       type: 'string',
-      description: 'Laisser "0.00" : recalculé côté serveur (nombre × 8,60 €)',
+      description:
+        'Somme part salarié + part patronale de la ligne Titres-restaurant (ex. 61.92+92.88=154.80), ou (taux A déduire + taux charges patronales) × base',
     },
     explanation: {
       type: ['string', 'null'],
-      description: 'Explication si bulletin atypique (prime exceptionnelle, régularisation, etc.), sinon null',
+      description: 'Court : congés pris (ex. 2CP), ou null',
     },
     primesIndemnitesIncluses: {
       type: 'string',
-      description:
-        'Total des primes « normales » déjà incluses au brut de base (hors congés / IK / indemnité CP)',
+      description: 'Somme des primes déjà dans « Salaire brut » (hors congés). Souvent 0.00 ou montant prime objectifs',
     },
     bonuses: {
       type: 'array',
       description:
-        'Uniquement vraies primes (intéressement, objectifs, partage de valeur, 13e mois, etc.). JAMAIS congés payés ni indemnité kilométrique',
+        'Primes incluses dans « Salaire brut » (lignes AVANT « Salaire brut », ex. Prime d\'objectifs). Jamais IK, DFS, congés, partage de valeur après cotisations',
       items: {
         type: 'object',
         additionalProperties: false,
@@ -110,7 +115,7 @@ export const payslipExtractionJsonSchema = {
     nonIncludedPrimes: {
       type: 'array',
       description:
-        'Primes ou indemnités réellement hors salaire de base du bulletin. JAMAIS congés payés ni indemnité kilométrique (déjà dans brut/net)',
+        'Montants en colonne « A payer » après cotisations, NON inclus dans « Salaire brut » : IK vélo, indemnité transport (DFS), prime partage de valeur versée au net, etc.',
       items: {
         type: 'object',
         additionalProperties: false,
@@ -134,37 +139,63 @@ export const payslipExtractionJsonSchema = {
   ],
 }
 
-export const PAYSLIP_EXTRACTION_PROMPT = `Tu analyses un document uploadé par l'utilisateur.
+export const PAYSLIP_EXTRACTION_PROMPT = `Tu extrais un bulletin de salaire français (format Sage / AWS : en-tête « BULLETIN DE SALAIRE », bloc « Éléments de paie », employeur type AVENUE WEB SYSTEMES).
 
-## Détection du type de document
-- isPayslip = true UNIQUEMENT si c'est une fiche de paye / bulletin de salaire français (employeur, salarié, brut, net, cotisations, etc.).
-- isPayslip = false pour tout autre document : facture, photo personnelle, contrat, relevé bancaire, capture d'écran sans bulletin, document illisible ou vide, etc.
-- Si isPayslip = false : mets "0.00" pour tous les montants, 0 pour ticketRestaurantCount, tableaux bonuses et nonIncludedPrimes vides, explanation = null. Ne devine pas de montants.
+Règle d'or : recopie les totaux des LIBELLÉS EXACTS ci-dessous. Ne calcule pas en additionnant les lignes de cotisations ni « Salaire de base » seul.
 
-## Si isPayslip = true
-Extrais les montants en euros sous forme de chaînes avec 2 décimales (point décimal en sortie).
+## Détection
+- isPayslip = true seulement pour un vrai bulletin de paie.
+- Si false : tous montants "0.00", ticketRestaurantCount=0, tableaux vides.
 
-## Salaire de base (champs brut, netImposable, netPaye)
-- brut, netImposable, netPaye : totaux du bulletin du mois, en INCLUANT congés payés, indemnité de congés payés et indemnité kilométrique (IK) s'ils figurent sur la fiche.
-- Ces éléments font partie du salaire de base : ne les liste PAS dans "bonuses" ni dans "nonIncludedPrimes".
-- Exclue uniquement du net payé la part tickets restaurant, et des totaux brut/net les montants des vraies primes à détailler dans "bonuses".
+## Totaux obligatoires (colonne « Mensuel » du bandeau ou libellé dans le corps)
 
-## Primes (bonuses vs nonIncludedPrimes)
-- bonuses : UNIQUEMENT vraies primes (intéressement, objectifs, partage de valeur, 13e mois, etc.). Libellés category :
-  "Interressement", "Objectifs", "Partage de valeur" (sinon libellé court sans "Prime de").
-- NE METS JAMAIS dans bonuses ni nonIncludedPrimes : congés payés, indemnité congés payés, indemnité kilométrique (IK),
-  frais kilométriques, indemnité de déplacement liée au véhicule, remboursement de trajet, etc.
-- Vérifie category ET description : si l'un des deux évoque l'IK ou les congés payés, n'ajoute pas la ligne aux primes.
-- nonIncludedPrimes : uniquement montants clairement hors salaire de base du bulletin (pas congés payés, pas IK). Tableau vide si aucune.
+### brut
+- UNIQUEMENT le montant de la ligne **« Salaire brut »** dans « Éléments de paie » (souvent juste après indemnité congés payés).
+- NE PAS utiliser : « Salaire de base », la colonne « Brut » du bandeau haut, un total calculé, ni un brut diminué de l'IK.
+- L'indemnité kilométrique vélo et l'indemnité transport (DFS) ne sont PAS dans ce « Salaire brut ».
+
+### netImposable
+- Priorité 1 : valeur **mensuelle** sous le titre **« Net imposable »** dans le bandeau (ligne « Mensuel », 7e colonne environ après Heures / Brut / Plafond S.S.).
+- Priorité 2 : le 2e montant (base) sur la ligne **« Impôt sur le revenu prélevé à la source - PAS »** (avant le taux %).
+- NE PAS confondre avec « Montant net social », « Net à payer avant impôt », ni la colonne « Brut » du bandeau.
+
+### netPaye
+- Montant de la ligne **« Net payé »** (avant ou après PAS selon mise en page) OU **« Net payé : X euros »** en bas de page.
+- NE PAS utiliser « Net à payer avant impôt sur le revenu » ni « Montant net social ».
+
+### prelevementSource
+- Montant **déduit** (positif) sur la ligne PAS, colonne « A déduire » (ex. 155.03 si base PAS 2925.13 et taux 5.30).
 
 ## Tickets restaurant
-- ticketRestaurantCount : nombre de tickets indiqué sur le bulletin (quantité / base / nombre de titres), entier.
-- Ne déduis pas un montant en euros du bulletin pour les tickets : mets ticketRestaurant à "0.00" (recalcul automatique : nombre × 8,60 €).
+- ticketRestaurantCount : **base** (1er nombre) de la ligne **« Titres-restaurant »** (ex. 18).
+- ticketRestaurant : somme **euros salarié + euros patronal** sur cette ligne (ex. 61.92 + 92.88 = 154.80), ou (taux « A déduire » + taux « Charges patronales ») × base.
 
-## Autres champs
-- prelevementSource : prélèvement à la source (0.00 si absent)
-- year, month : période du bulletin si visible
-- explanation : texte court uniquement si bulletin atypique, sinon null
-- primesIndemnitesIncluses : total des vraies primes déjà dans le brut (hors congés payés et hors IK). Omettre ou "0.00" si seul l'IK ou les congés composent ce total.
+## Primes et indemnités
 
-Si un montant est introuvable, mets "0.00". Si ticketRestaurantCount est absent, mets 0.`
+### bonuses (déjà dans « Salaire brut »)
+- Lignes **avant** « Salaire brut » qui composent ce total : ex. **« Prime d'objectifs »** 200.00 quand le salaire brut est 3775.00.
+- basis = BRUT, flow = VARIABLE.
+
+### nonIncludedPrimes (hors « Salaire brut », souvent colonne « A payer » après « Total des cotisations »)
+- **Indemnité kilométrique** / **Indemnité Kilométrique vélo** → category « Indemnité kilométrique » (ex. 16.67).
+- **Indemnité de transport (DFS)** → category « Indemnité de transport (DFS) ».
+- **Prime de partage de la valeur** (et autres primes après les cotisations, pas dans salaire brut) → category « Partage de valeur », basis implicite NET.
+- NE PAS mettre : congés payés pris, indemnité congés payés (déjà dans salaire brut).
+
+### Congés
+- Ne pas lister en prime. Dans explanation, indiquer les jours pris (ex. « 2CP ») si visible.
+
+## primesIndemnitesIncluses
+- Somme des montants bonuses, ou "0.00" si aucune prime avant « Salaire brut ».
+
+## Interdits
+- Ne soustrais pas l'IK ni le DFS des champs brut / netImposable / netPaye (ils ne sont pas dans « Salaire brut » sur ce format).
+- Ne additionne pas les cotisations salariales pour fabriquer un net.
+- Format sortie : chaînes avec 2 décimales, point décimal (3575.00).
+
+## Exemples de contrôle (ne pas inventer si autre mois)
+- Mars 2026 : brut 3575.00, netImposable 2925.13, netPaye 2588.51, PAS 155.03, tickets 18, IK 16.67.
+- Février 2026 : brut 3450.00, netImposable 2827.71, netPaye 2506.74, partage valeur 1300 en nonIncludedPrimes.
+- Avril 2026 : brut 3775.00, netImposable 3088.90, netPaye 2741.25, prime objectifs 200 en bonuses.
+
+year/month depuis « Période : … ». Montant introuvable → "0.00".`

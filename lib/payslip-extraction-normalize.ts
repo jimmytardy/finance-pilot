@@ -1,5 +1,7 @@
 import {
   isBaseSalaryElementCategory,
+  isNonIncludedIndemnityCategory,
+  normalizeNonIncludedIndemnityCategory,
   normalizePrimeCategoryLabel,
   TICKET_RESTAURANT_UNIT_EUR,
 } from '@/lib/payslip-extraction-constants'
@@ -27,7 +29,7 @@ function parseCount(v: unknown): number | null {
   return Math.round(n)
 }
 
-/** Tickets restaurant = valeur unitaire entreprise × nombre indiqué sur le bulletin. */
+/** Repli : nombre de titres × valeur unitaire entreprise. */
 export function computeTicketRestaurantAmount(ticketCount: number): string {
   return toDecimalString(ticketCount * TICKET_RESTAURANT_UNIT_EUR)
 }
@@ -35,70 +37,118 @@ export function computeTicketRestaurantAmount(ticketCount: number): string {
 type BonusLine = NonNullable<PayslipExtraction['bonuses']>[number]
 type NonIncludedLine = NonNullable<PayslipExtraction['nonIncludedPrimes']>[number]
 
+function mergeIndemnityLinesByCategory(lines: NonIncludedLine[]): NonIncludedLine[] {
+  const byCategory = new Map<string, { amount: number; descriptions: string[] }>()
+  for (const line of lines) {
+    const prev = byCategory.get(line.category) ?? { amount: 0, descriptions: [] }
+    prev.amount += parseMoney(line.amount)
+    if (line.description?.trim()) prev.descriptions.push(line.description.trim())
+    byCategory.set(line.category, prev)
+  }
+  return [...byCategory.entries()].map(([category, { amount, descriptions }]) => ({
+    category,
+    description: descriptions.join(' ; '),
+    amount: toDecimalString(amount),
+  }))
+}
+
 /**
- * Retire congés payés / IK des listes de primes.
- * Si l'IA les a isolés par erreur, leurs montants sont réintégrés au brut (salaire de base).
+ * Classe IK / DFS / congés mal placés en listes de primes.
+ * Ne modifie pas brut / net : ces totaux viennent des libellés récap du bulletin (déjà hors IK).
  */
-function stripBaseSalaryFromPrimeLists(bonuses: BonusLine[], nonIncluded: NonIncludedLine[]): {
+function processPrimeLists(bonuses: BonusLine[], nonIncluded: NonIncludedLine[]): {
   bonuses: BonusLine[]
   nonIncludedPrimes: NonIncludedLine[]
-  addToBrut: number
+  addCongesToBrut: number
 } {
-  let addToBrut = 0
+  let addCongesToBrut = 0
   const keptBonuses: BonusLine[] = []
   const keptNonIncluded: NonIncludedLine[] = []
+  const indemnityLines: NonIncludedLine[] = []
+
+  const pushIndemnity = (category: string, amount: string, description: string) => {
+    const n = parseMoney(amount)
+    if (n <= 0) return
+    indemnityLines.push({
+      category,
+      description,
+      amount: toDecimalString(n),
+    })
+  }
 
   for (const b of bonuses) {
-    if (isBaseSalaryElementCategory(b.category, b.description ?? '')) {
-      addToBrut += parseMoney(b.amount)
+    const desc = b.description ?? ''
+    if (isNonIncludedIndemnityCategory(b.category, desc)) {
+      pushIndemnity(normalizeNonIncludedIndemnityCategory(b.category, desc)!, b.amount, desc)
+    } else if (isBaseSalaryElementCategory(b.category, desc)) {
+      addCongesToBrut += parseMoney(b.amount)
     } else {
       keptBonuses.push({
         ...b,
-        category: normalizePrimeCategoryLabel(b.category, b.description ?? ''),
+        category: normalizePrimeCategoryLabel(b.category, desc),
       })
     }
   }
 
   for (const p of nonIncluded) {
-    if (isBaseSalaryElementCategory(p.category, p.description ?? '')) {
-      addToBrut += parseMoney(p.amount)
+    const desc = p.description ?? ''
+    if (isNonIncludedIndemnityCategory(p.category, desc)) {
+      pushIndemnity(normalizeNonIncludedIndemnityCategory(p.category, desc)!, p.amount, desc)
+    } else if (isBaseSalaryElementCategory(p.category, desc)) {
+      addCongesToBrut += parseMoney(p.amount)
     } else {
       keptNonIncluded.push({
         ...p,
-        category: normalizePrimeCategoryLabel(p.category, p.description ?? ''),
+        category: normalizePrimeCategoryLabel(p.category, desc),
       })
     }
   }
 
-  return { bonuses: keptBonuses, nonIncludedPrimes: keptNonIncluded, addToBrut }
+  const mergedIndemnities = mergeIndemnityLinesByCategory(indemnityLines)
+  const nonIncludedPrimes = [...keptNonIncluded, ...mergedIndemnities]
+
+  return { bonuses: keptBonuses, nonIncludedPrimes, addCongesToBrut }
 }
 
 /**
- * Applique les règles métier après extraction Mistral :
- * - tickets = 8,60 € × nombre sur le bulletin ;
- * - congés payés / IK = salaire de base (dans brut/net), jamais en primes.
+ * Post-traitement léger : reclasse les lignes de primes, recalcule les tickets si besoin.
+ * Les montants brut / net imposable / net payé renvoyés par Mistral ne sont pas retranchés (pas de double exclusion IK).
  */
 export function normalizePayslipExtraction(raw: PayslipExtraction): PayslipExtraction {
   const ticketCount = parseCount(raw.ticketRestaurantCount)
+  const fromAi = parseMoney(raw.ticketRestaurant)
   const ticketRestaurant =
-    ticketCount != null
-      ? computeTicketRestaurantAmount(ticketCount)
-      : raw.ticketRestaurant
+    fromAi > 0
+      ? toDecimalString(fromAi)
+      : ticketCount != null
+        ? computeTicketRestaurantAmount(ticketCount)
+        : raw.ticketRestaurant
 
-  const { bonuses, nonIncludedPrimes, addToBrut } = stripBaseSalaryFromPrimeLists(
+  const { bonuses, nonIncludedPrimes, addCongesToBrut } = processPrimeLists(
     raw.bonuses ?? [],
     raw.nonIncludedPrimes ?? [],
   )
 
   let primesIndemnitesIncluses = raw.primesIndemnitesIncluses
-  if (primesIndemnitesIncluses != null && addToBrut > 0) {
-    const adjusted = Math.max(0, parseMoney(primesIndemnitesIncluses) - addToBrut)
+  if (primesIndemnitesIncluses != null && addCongesToBrut > 0) {
+    const adjusted = Math.max(0, parseMoney(primesIndemnitesIncluses) - addCongesToBrut)
     primesIndemnitesIncluses = adjusted > 0 ? toDecimalString(adjusted) : undefined
+  }
+
+  let brut = raw.brut
+  let netImposable = raw.netImposable
+  let netPaye = raw.netPaye
+  if (addCongesToBrut > 0) {
+    brut = addMoneyField(brut, addCongesToBrut)
+    netImposable = addMoneyField(netImposable, addCongesToBrut)
+    netPaye = addMoneyField(netPaye, addCongesToBrut)
   }
 
   return {
     ...raw,
-    brut: addMoneyField(raw.brut, addToBrut),
+    brut,
+    netImposable,
+    netPaye,
     ticketRestaurant,
     bonuses,
     nonIncludedPrimes,
