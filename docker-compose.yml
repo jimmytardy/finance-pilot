@@ -25,9 +25,7 @@ services:
       # Prisma (pas Liquibase) : voir docker-entrypoint.sh — nécessite prisma/migrations/ versionnées.
       RUN_MIGRATIONS_ON_START: ${RUN_MIGRATIONS_ON_START:-false}
       RUN_DB_PUSH_ON_START: ${RUN_DB_PUSH_ON_START:-false}
-    networks:
-      - postgres_network
 
 networks:
-  postgres_network:
+  local-network:
     external: true
