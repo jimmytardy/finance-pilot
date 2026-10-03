@@ -1,12 +1,12 @@
 import 'server-only'
 import { getCanonicalEnv } from '@/lib/env'
-import { normalizePayslipExtraction } from '@/lib/payslip-extraction-normalize'
+import { normalizePayslipExtraction, type PayslipWarning } from '@/lib/payslip-extraction-normalize'
 import {
   PAYSLIP_EXTRACTION_PROMPT,
   payslipExtractionJsonSchema,
   payslipExtractionWithDetectionSchema,
-  type PayslipExtraction,
 } from '@/lib/payslip-extraction-schema'
+import type { PayslipDraft } from '@/lib/payslip-types'
 
 const OCR_MODEL = 'mistral-ocr-latest'
 const MISTRAL_OCR_URL = 'https://api.mistral.ai/v1/ocr'
@@ -61,7 +61,7 @@ type MistralOcrResponse = {
 export async function extractPayslipFromBuffer(
   buffer: ArrayBuffer,
   mime: PayslipMime,
-): Promise<PayslipExtraction> {
+): Promise<{ draft: PayslipDraft; warnings: PayslipWarning[] }> {
   const apiKey = getCanonicalEnv().MISTRAL_API_KEY
   if (!apiKey) throw new PayslipExtractionError('not_configured')
 
@@ -82,7 +82,7 @@ export async function extractPayslipFromBuffer(
         document_annotation_format: {
           type: 'json_schema',
           json_schema: {
-            name: 'payslip_extraction',
+            name: 'payslip_detailed_extraction',
             strict: true,
             schema: payslipExtractionJsonSchema,
           },
@@ -124,6 +124,5 @@ export async function extractPayslipFromBuffer(
     throw new PayslipExtractionError('not_a_payslip')
   }
 
-  const { isPayslip: _ignored, ...extraction } = validated.data
-  return normalizePayslipExtraction(extraction)
+  return normalizePayslipExtraction(validated.data, OCR_MODEL)
 }

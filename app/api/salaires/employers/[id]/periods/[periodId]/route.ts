@@ -6,7 +6,7 @@ import { serializeEmployer } from '@/lib/salary-json'
 import {
   parseEmploymentPeriodEnd,
   parseEmploymentPeriodStart,
-  reconcileSalaryMonthsForUser,
+  reconcilePayslipEmployersForUser,
 } from '@/lib/salary-employer-period'
 
 type Ctx = { params: Promise<{ id: string; periodId: string }> }
@@ -49,7 +49,7 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
     },
   })
 
-  await reconcileSalaryMonthsForUser(userId)
+  await reconcilePayslipEmployersForUser(userId)
 
   const updated = await prisma.employer.findFirstOrThrow({
     where: { id: employerId },
@@ -70,7 +70,7 @@ export async function DELETE(request: NextRequest, ctx: Ctx) {
 
   await prisma.employmentPeriod.delete({ where: { id: periodId } })
 
-  await reconcileSalaryMonthsForUser(userId)
+  await reconcilePayslipEmployersForUser(userId)
 
   const updated = await prisma.employer.findFirstOrThrow({
     where: { id: employerId },

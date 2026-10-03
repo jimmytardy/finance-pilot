@@ -1,20 +1,18 @@
 import type { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getAuthenticatedUserId } from '@/lib/auth-user-from-request'
-import { aggregateByYear, evolutionRows } from '@/lib/salary-aggregates'
+import { serializePayslip } from '@/lib/salary-json'
+import { computeSalaryStats } from '@/lib/salary-stats'
 
 export async function GET(request: NextRequest) {
   const userId = await getAuthenticatedUserId(request)
   if (!userId) return Response.json({ error: 'Non authentifié' }, { status: 401 })
 
-  const months = await prisma.salaryMonth.findMany({
+  const rows = await prisma.payslip.findMany({
     where: { userId },
-    include: { bonuses: true, nonIncludedPrimes: true },
     orderBy: [{ year: 'asc' }, { month: 'asc' }],
+    include: { lines: true },
   })
 
-  return Response.json({
-    byYear: aggregateByYear(months),
-    evolution: evolutionRows(months),
-  })
+  return Response.json(computeSalaryStats(rows.map(serializePayslip)))
 }

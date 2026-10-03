@@ -1,8 +1,7 @@
+import { isValidCategory, OTHER_CATEGORY, type PayslipBlocId } from '@/lib/payslip-categories'
+
 /** Valeur unitaire d'un ticket restaurant (entreprise) — repli si le bulletin ne donne pas le détail. */
 export const TICKET_RESTAURANT_UNIT_EUR = 8.6
-
-export const KILOMETRIC_INDEMNITY_CATEGORY = 'Indemnité kilométrique'
-export const TRANSPORT_DFS_INDEMNITY_CATEGORY = 'Indemnité de transport (DFS)'
 
 function foldAccents(s: string): string {
   return s
@@ -11,126 +10,43 @@ function foldAccents(s: string): string {
     .toLowerCase()
 }
 
-function foldedLabel(category: string, description = ''): string {
-  return foldAccents(`${category} ${description}`.trim())
+function isKilometricLabel(c: string): boolean {
+  if (c.includes('kilometr') || c.includes('frais kilom') || c.includes('indemnite kilom')) return true
+  if (c.includes('velo') && (c.includes('indemnite') || c.includes('kilom'))) return true
+  if (/\bik\b/.test(c)) return true
+  if (c.includes('teletravail')) return true
+  if (c.includes('chevaux fiscaux') || (c.includes('cv') && c.includes('km'))) return true
+  return false
+}
+
+function isTransportLabel(c: string): boolean {
+  if (c.includes('transport') && (/\bdfs\b/.test(c) || c.includes('rembours') || c.includes('indemnite'))) return true
+  if (c.includes('navigo') || c.includes('mobilites durables') || c.includes('forfait mobilite')) return true
+  return false
 }
 
 /**
- * Congés payés et indemnité congés payés : composantes du salaire de base
- * (dans brut / net), pas des primes.
+ * Garde-fou après l'IA : corrige le bloc / la catégorie d'après le libellé pour les cas
+ * fréquemment mal rangés, et retombe sur `autre` si le couple bloc / catégorie est invalide.
  */
-export function isBaseSalaryElementCategory(category: string, description = ''): boolean {
-  const c = foldedLabel(category, description)
-  if (!c) return false
-  if (isNonIncludedIndemnityLabel(c)) return false
+export function reclassifyLine(
+  bloc: PayslipBlocId,
+  categorie: string,
+  libelle: string,
+): { bloc: PayslipBlocId; categorie: string } {
+  const c = foldAccents(libelle)
 
-  if (c.includes('cong')) {
-    if (c.includes('objectif')) return false
-    return true
+  if (bloc !== 'COTISATION') {
+    if (c.includes('partage') && c.includes('valeur')) return { bloc: 'PARTAGE_VALEUR', categorie: 'prime_partage_valeur' }
+    if (/\b(ppv|pepa)\b/.test(c)) return { bloc: 'PARTAGE_VALEUR', categorie: 'prime_partage_valeur' }
+    if (c.includes('interessement') || c.includes('interressement')) return { bloc: 'PARTAGE_VALEUR', categorie: 'interessement' }
+    if (c.includes('abondement')) return { bloc: 'PARTAGE_VALEUR', categorie: 'abondement' }
+    if (c.includes('titre') && c.includes('restaurant')) return { bloc: 'AJUSTEMENT_NET', categorie: 'titres_restaurant' }
+    if (c.includes('ticket') && c.includes('resto')) return { bloc: 'AJUSTEMENT_NET', categorie: 'titres_restaurant' }
+    if (isTransportLabel(c)) return { bloc: 'AJUSTEMENT_NET', categorie: 'transport' }
+    if (isKilometricLabel(c)) return { bloc: 'AJUSTEMENT_NET', categorie: 'frais_pro' }
   }
 
-  return false
-}
-
-/** Indemnité de transport (DFS) : prime non incluse au brut de base. */
-export function isTransportDfsIndemnityCategory(category: string, description = ''): boolean {
-  const c = foldedLabel(category, description)
-  return c.length > 0 && isTransportDfsIndemnityLabel(c)
-}
-
-/** Indemnité kilométrique : prime non incluse au brut de base. */
-export function isKilometricIndemnityCategory(category: string, description = ''): boolean {
-  const c = foldedLabel(category, description)
-  if (!c || isTransportDfsIndemnityLabel(c)) return false
-  return isKilometricIndemnityLabel(c)
-}
-
-/** IK ou indemnité transport DFS : hors salaire de base, en primes non incluses. */
-export function isNonIncludedIndemnityCategory(category: string, description = ''): boolean {
-  return (
-    isTransportDfsIndemnityCategory(category, description) ||
-    isKilometricIndemnityCategory(category, description)
-  )
-}
-
-export function normalizeNonIncludedIndemnityCategory(
-  category: string,
-  description = '',
-): string | null {
-  if (isTransportDfsIndemnityCategory(category, description)) return TRANSPORT_DFS_INDEMNITY_CATEGORY
-  if (isKilometricIndemnityCategory(category, description)) return KILOMETRIC_INDEMNITY_CATEGORY
-  return null
-}
-
-function isNonIncludedIndemnityLabel(c: string): boolean {
-  return isTransportDfsIndemnityLabel(c) || isKilometricIndemnityLabel(c)
-}
-
-function isTransportDfsIndemnityLabel(c: string): boolean {
-  if (c.includes('indemnite de transport') && c.includes('dfs')) return true
-  if (c.includes('indemnite transport') && c.includes('dfs')) return true
-  if (/\bdfs\b/.test(c) && c.includes('transport')) return true
-  return false
-}
-
-/** Indemnité kilométrique / vélo (hors transport DFS). */
-function isKilometricIndemnityLabel(c: string): boolean {
-  if (isTransportDfsIndemnityLabel(c)) return false
-
-  if (c.includes('kilometr') || c.includes('frais kilom') || c.includes('indemnite kilom')) return true
-  if (c.includes('velo') && (c.includes('indemnite') || c.includes('kilom'))) return true
-  if (/\bik\b/.test(c) || c === 'ik' || c.startsWith('ik ')) return true
-
-  if (
-    (c.includes('indemnite') || c.includes('frais') || c.includes('remboursement')) &&
-    (c.includes('deplacement') ||
-      c.includes('trajet') ||
-      c.includes('vehicule') ||
-      c.includes('voiture') ||
-      c.includes('automobile'))
-  ) {
-    return true
-  }
-
-  if (c.includes('chevaux fiscaux') || (c.includes('cv') && c.includes('km'))) return true
-
-  return false
-}
-
-/** Libellés courts et homogènes pour les vraies primes (hors salaire de base). */
-export function normalizePrimeCategoryLabel(category: string, description = ''): string {
-  const raw = category.trim().replace(/^['"]+|['"]+$/g, '')
-  if (!raw) return raw
-
-  const indemnityLabel = normalizeNonIncludedIndemnityCategory(raw, description)
-  if (indemnityLabel) return indemnityLabel
-  if (isBaseSalaryElementCategory(raw, description)) return raw
-
-  const combined = foldAccents(`${raw} ${description}`)
-  const c = foldAccents(raw)
-
-  if (combined.includes('interessement') || combined.includes('interressement')) return 'Interressement'
-  if (combined.includes('objectif')) return 'Objectifs'
-  if (combined.includes('partage') && combined.includes('valeur')) return 'Partage de valeur'
-
-  if (c === 'primes' || c === 'prime') {
-    return 'Primes'
-  }
-
-  const primeDe = /^prime\s+de\s+(.+)$/i.exec(raw)
-  if (primeDe) return titleCasePrimeLabel(primeDe[1])
-
-  const primeD = /^prime\s+d[''](.+)$/i.exec(raw)
-  if (primeD) return titleCasePrimeLabel(primeD[1])
-
-  const primeBare = /^prime\s+(.+)$/i.exec(raw)
-  if (primeBare) return titleCasePrimeLabel(primeBare[1])
-
-  return raw
-}
-
-function titleCasePrimeLabel(fragment: string): string {
-  const t = fragment.trim()
-  if (!t) return t
-  return t.charAt(0).toUpperCase() + t.slice(1)
+  if (!isValidCategory(bloc, categorie)) return { bloc, categorie: OTHER_CATEGORY }
+  return { bloc, categorie }
 }

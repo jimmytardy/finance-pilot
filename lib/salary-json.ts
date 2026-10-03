@@ -1,58 +1,66 @@
-import type { Prisma } from '@prisma/client'
-import type { SalaryBonus, SalaryMonth, SalaryNonIncludedPrime } from '@prisma/client'
+import type { Payslip, PayslipLine, Prisma } from '@prisma/client'
+import type { PayslipDto, PayslipLineDto } from '@/lib/payslip-types'
 
 export function dec(v: Prisma.Decimal | null | undefined): string {
   if (v == null) return '0'
   return v.toString()
 }
 
-export function serializeBonus(b: SalaryBonus) {
+function decOrNull(v: Prisma.Decimal | null | undefined): string | null {
+  return v == null ? null : v.toString()
+}
+
+export function serializePayslipLine(l: PayslipLine): PayslipLineDto {
   return {
-    id: b.id,
-    salaryMonthId: b.salaryMonthId,
-    category: b.category,
-    description: b.description,
-    amount: dec(b.amount),
-    basis: b.basis,
-    flow: b.flow,
-    createdAt: b.createdAt.toISOString(),
-    updatedAt: b.updatedAt.toISOString(),
+    id: l.id,
+    position: l.position,
+    bloc: l.bloc,
+    categorie: l.categorie,
+    libelle: l.libelle,
+    base: decOrNull(l.base),
+    quantite: decOrNull(l.quantite),
+    tauxSalarial: decOrNull(l.tauxSalarial),
+    montantSalarial: decOrNull(l.montantSalarial),
+    tauxPatronal: decOrNull(l.tauxPatronal),
+    montantPatronal: decOrNull(l.montantPatronal),
+    montant: decOrNull(l.montant),
+    frequence: l.frequence,
+    regimeSocial: l.regimeSocial,
+    imposable: l.imposable,
+    exonerationIr: l.exonerationIr,
+    verseEnNumeraire: l.verseEnNumeraire,
+    modeEpargne: l.modeEpargne,
+    csgCrds: decOrNull(l.csgCrds),
+    periodeRattachement: l.periodeRattachement,
   }
 }
 
-export function serializeNonIncludedPrime(p: SalaryNonIncludedPrime) {
+export function serializePayslip(p: Payslip & { lines?: PayslipLine[] }): PayslipDto {
   return {
     id: p.id,
-    salaryMonthId: p.salaryMonthId,
-    category: p.category,
-    description: p.description,
-    amount: dec(p.amount),
+    employerId: p.employerId,
+    kind: p.kind,
+    year: p.year,
+    month: p.month,
+    label: p.label,
+    brut: dec(p.brut),
+    netAvantImpot: dec(p.netAvantImpot),
+    netImposable: dec(p.netImposable),
+    netSocial: decOrNull(p.netSocial),
+    netPaye: dec(p.netPaye),
+    prelevementSource: dec(p.prelevementSource),
+    tauxPas: decOrNull(p.tauxPas),
+    totalCotisationsSalariales: decOrNull(p.totalCotisationsSalariales),
+    totalCotisationsPatronales: decOrNull(p.totalCotisationsPatronales),
+    coutEmployeur: decOrNull(p.coutEmployeur),
+    heuresTravaillees: decOrNull(p.heuresTravaillees),
+    plafondSS: decOrNull(p.plafondSS),
+    cumuls: (p.cumuls as Record<string, string | number> | null) ?? null,
+    notes: p.notes,
+    extractedBy: p.extractedBy,
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString(),
-  }
-}
-
-export function serializeSalaryMonth(
-  m: SalaryMonth & { bonuses?: SalaryBonus[]; nonIncludedPrimes?: SalaryNonIncludedPrime[] },
-) {
-  return {
-    id: m.id,
-    userId: m.userId,
-    employerId: m.employerId,
-    year: m.year,
-    month: m.month,
-    brut: dec(m.brut),
-    netImposable: dec(m.netImposable),
-    netPaye: dec(m.netPaye),
-    prelevementSource: dec(m.prelevementSource),
-    ticketRestaurant: dec(m.ticketRestaurant),
-    primesIndemnitesIncluses: dec(m.primesIndemnitesIncluses),
-    primesIndemnitesNonIncluses: dec(m.primesIndemnitesNonIncluses),
-    explanation: m.explanation,
-    createdAt: m.createdAt.toISOString(),
-    updatedAt: m.updatedAt.toISOString(),
-    bonuses: (m.bonuses ?? []).map(serializeBonus),
-    nonIncludedPrimes: (m.nonIncludedPrimes ?? []).map(serializeNonIncludedPrime),
+    lines: [...(p.lines ?? [])].sort((a, b) => a.position - b.position).map(serializePayslipLine),
   }
 }
 

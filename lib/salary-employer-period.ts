@@ -39,9 +39,9 @@ export function periodCoversMonth(
 }
 
 /** Rattache chaque bulletin au premier employeur dont une période couvre le mois (ordre employeur puis début de période). Sinon `employerId` = null. */
-export async function reconcileSalaryMonthsForUser(userId: string): Promise<void> {
-  const [months, periods] = await Promise.all([
-    prisma.salaryMonth.findMany({
+export async function reconcilePayslipEmployersForUser(userId: string): Promise<void> {
+  const [payslips, periods] = await Promise.all([
+    prisma.payslip.findMany({
       where: { userId },
       select: { id: true, year: true, month: true, employerId: true },
     }),
@@ -53,7 +53,7 @@ export async function reconcileSalaryMonthsForUser(userId: string): Promise<void
 
   const updates: { id: string; employerId: string | null }[] = []
 
-  for (const sm of months) {
+  for (const sm of payslips) {
     let chosen: string | null = null
     for (const p of periods) {
       if (periodCoversMonth(p, sm.year, sm.month)) {
@@ -70,7 +70,7 @@ export async function reconcileSalaryMonthsForUser(userId: string): Promise<void
 
   await prisma.$transaction(
     updates.map((u) =>
-      prisma.salaryMonth.update({
+      prisma.payslip.update({
         where: { id: u.id },
         data: { employerId: u.employerId },
       }),

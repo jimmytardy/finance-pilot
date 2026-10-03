@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getAuthenticatedUserId } from '@/lib/auth-user-from-request'
-import { employerStats } from '@/lib/salary-aggregates'
+import { employerStats } from '@/lib/salary-stats'
 
 export async function GET(request: NextRequest) {
   const userId = await getAuthenticatedUserId(request)
@@ -12,9 +12,15 @@ export async function GET(request: NextRequest) {
     select: { id: true, name: true },
     orderBy: { name: 'asc' },
   })
-  const months = await prisma.salaryMonth.findMany({
-    where: { userId },
+  const payslips = await prisma.payslip.findMany({
+    where: { userId, kind: 'BULLETIN' },
+    select: { employerId: true, kind: true, year: true, netPaye: true },
   })
 
-  return Response.json(employerStats(employers, months))
+  return Response.json(
+    employerStats(
+      employers,
+      payslips.map((p) => ({ ...p, netPaye: p.netPaye.toString() })),
+    ),
+  )
 }

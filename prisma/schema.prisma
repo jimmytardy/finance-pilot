@@ -7,14 +7,39 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum SalaryBonusBasis {
-  BRUT
-  NET
+/// Bulletin de paie mensuel, ou fiche distincte d'épargne salariale (intéressement, participation).
+enum PayslipKind {
+  BULLETIN
+  EPARGNE_SALARIALE
 }
 
-enum SalaryBonusFlow {
-  FIXE
-  VARIABLE
+enum PayslipBloc {
+  REMUNERATION
+  PARTAGE_VALEUR
+  FIN_CONTRAT
+  COTISATION
+  IMPOT
+  AJUSTEMENT_NET
+}
+
+enum PayslipFrequence {
+  MENSUELLE
+  TRIMESTRIELLE
+  ANNUELLE
+  PONCTUELLE
+}
+
+enum PayslipRegimeSocial {
+  NORMAL
+  REDUIT
+  EXONERE
+  SPECIFIQUE
+}
+
+enum PayslipModeEpargne {
+  PLACE
+  PERCU
+  INCONNU
 }
 
 model Account {
@@ -55,7 +80,7 @@ model User {
   simulatorState     SimulatorState?
   employers          Employer[]
   employmentPeriods EmploymentPeriod[]
-  salaryMonths       SalaryMonth[]
+  payslips           Payslip[]
 }
 
 model VerificationToken {
@@ -82,7 +107,7 @@ model Employer {
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
   employmentPeriods EmploymentPeriod[]
-  salaryMonths        SalaryMonth[]
+  payslips            Payslip[]
 
   @@index([userId])
 }
@@ -103,55 +128,66 @@ model EmploymentPeriod {
   @@index([employerId])
 }
 
-model SalaryMonth {
-  id                           String        @id @default(cuid())
-  userId                       String
-  user                         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  employerId                   String?
-  employer                     Employer?     @relation(fields: [employerId], references: [id], onDelete: SetNull)
-  year                         Int
-  month                        Int
-  brut                         Decimal       @db.Decimal(14, 2)
-  netImposable                 Decimal       @db.Decimal(14, 2)
-  netPaye                      Decimal       @db.Decimal(14, 2)
-  prelevementSource            Decimal       @db.Decimal(14, 2)
-  ticketRestaurant             Decimal       @db.Decimal(14, 2)
-  primesIndemnitesIncluses     Decimal       @default(0) @db.Decimal(14, 2)
-  primesIndemnitesNonIncluses  Decimal       @default(0) @db.Decimal(14, 2)
-  explanation                  String?       @db.Text
-  createdAt                    DateTime      @default(now())
-  updatedAt                    DateTime      @updatedAt
-  bonuses                      SalaryBonus[]
-  nonIncludedPrimes            SalaryNonIncludedPrime[]
+model Payslip {
+  id                         String       @id @default(cuid())
+  userId                     String
+  user                       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  employerId                 String?
+  employer                   Employer?    @relation(fields: [employerId], references: [id], onDelete: SetNull)
+  kind                       PayslipKind  @default(BULLETIN)
+  year                       Int
+  month                      Int
+  label                      String?
+  /// Totaux recopiés du document (source de vérité, jamais recalculés depuis les lignes).
+  brut                       Decimal      @db.Decimal(14, 2)
+  netAvantImpot              Decimal      @db.Decimal(14, 2)
+  netImposable               Decimal      @db.Decimal(14, 2)
+  netSocial                  Decimal?     @db.Decimal(14, 2)
+  netPaye                    Decimal      @db.Decimal(14, 2)
+  prelevementSource          Decimal      @default(0) @db.Decimal(14, 2)
+  tauxPas                    Decimal?     @db.Decimal(6, 3)
+  totalCotisationsSalariales Decimal?     @db.Decimal(14, 2)
+  totalCotisationsPatronales Decimal?     @db.Decimal(14, 2)
+  coutEmployeur              Decimal?     @db.Decimal(14, 2)
+  heuresTravaillees          Decimal?     @db.Decimal(8, 2)
+  plafondSS                  Decimal?     @db.Decimal(14, 2)
+  /// Cumuls annuels du bandeau (brut, imposable, heures sup exonérées…).
+  cumuls                     Json?
+  notes                      String?      @db.Text
+  /// Modèle IA ayant extrait le document, null si saisie manuelle.
+  extractedBy                String?
+  createdAt                  DateTime     @default(now())
+  updatedAt                  DateTime     @updatedAt
+  lines                      PayslipLine[]
 
-  @@unique([userId, year, month])
-  @@index([userId, year])
+  @@index([userId, year, month])
 }
 
-model SalaryNonIncludedPrime {
-  id            String      @id @default(cuid())
-  salaryMonthId String
-  salaryMonth   SalaryMonth @relation(fields: [salaryMonthId], references: [id], onDelete: Cascade)
-  category      String
-  description   String      @default("")
-  amount        Decimal     @db.Decimal(14, 2)
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+model PayslipLine {
+  id                  String               @id @default(cuid())
+  payslipId           String
+  payslip             Payslip              @relation(fields: [payslipId], references: [id], onDelete: Cascade)
+  position            Int
+  bloc                PayslipBloc
+  /// Identifiant de catégorie validé par `lib/payslip-categories.ts`.
+  categorie           String
+  libelle             String
+  base                Decimal?             @db.Decimal(14, 2)
+  quantite            Decimal?             @db.Decimal(10, 2)
+  tauxSalarial        Decimal?             @db.Decimal(8, 4)
+  montantSalarial     Decimal?             @db.Decimal(14, 2)
+  tauxPatronal        Decimal?             @db.Decimal(8, 4)
+  montantPatronal     Decimal?             @db.Decimal(14, 2)
+  /// Gains et ajustements (signé : négatif = retenue).
+  montant             Decimal?             @db.Decimal(14, 2)
+  frequence           PayslipFrequence?
+  regimeSocial        PayslipRegimeSocial?
+  imposable           Boolean?
+  exonerationIr       Boolean?
+  verseEnNumeraire    Boolean              @default(true)
+  modeEpargne         PayslipModeEpargne?
+  csgCrds             Decimal?             @db.Decimal(14, 2)
+  periodeRattachement String?
 
-  @@index([salaryMonthId])
-}
-
-model SalaryBonus {
-  id            String           @id @default(cuid())
-  salaryMonthId String
-  salaryMonth   SalaryMonth      @relation(fields: [salaryMonthId], references: [id], onDelete: Cascade)
-  category      String
-  description   String           @default("")
-  amount        Decimal          @db.Decimal(14, 2)
-  basis         SalaryBonusBasis
-  flow          SalaryBonusFlow
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
-
-  @@index([salaryMonthId])
+  @@index([payslipId])
 }

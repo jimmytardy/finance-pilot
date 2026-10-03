@@ -1,157 +1,96 @@
+import { reclassifyLine, TICKET_RESTAURANT_UNIT_EUR } from '@/lib/payslip-extraction-constants'
 import {
-  isBaseSalaryElementCategory,
-  isNonIncludedIndemnityCategory,
-  normalizeNonIncludedIndemnityCategory,
-  normalizePrimeCategoryLabel,
-  TICKET_RESTAURANT_UNIT_EUR,
-} from '@/lib/payslip-extraction-constants'
-import type { PayslipExtraction } from '@/lib/payslip-extraction-schema'
+  payslipExtractionLineSchema,
+  type PayslipExtractionRaw,
+} from '@/lib/payslip-extraction-schema'
+import { checkPayslipConsistency, type PayslipWarning } from '@/lib/payslip-consistency'
+import type { PayslipDraft, PayslipLineDto } from '@/lib/payslip-types'
 
-function toDecimalString(n: number): string {
-  if (!Number.isFinite(n)) return '0.00'
-  return n.toFixed(2)
-}
+export type { PayslipWarning }
 
-function parseMoney(v: string): number {
+function parseMoney(v: string | null | undefined): number {
+  if (v == null) return 0
   const n = Number(String(v).replace(',', '.').trim())
   return Number.isFinite(n) ? n : 0
 }
 
-function addMoneyField(field: string, add: number): string {
-  if (add <= 0) return field
-  return toDecimalString(parseMoney(field) + add)
+function toDecimalString(n: number): string {
+  return Number.isFinite(n) ? n.toFixed(2) : '0.00'
 }
 
-function parseCount(v: unknown): number | null {
-  if (v == null) return null
-  const n = typeof v === 'number' ? v : Number(String(v).replace(',', '.').trim())
-  if (!Number.isFinite(n) || n < 0) return null
-  return Math.round(n)
+
+function normalizeLine(raw: unknown): PayslipLineDto | null {
+  const parsed = payslipExtractionLineSchema.safeParse(raw)
+  if (!parsed.success) return null
+  const l = parsed.data
+  const { bloc, categorie } = reclassifyLine(l.bloc, l.categorie, l.libelle)
+  const line: PayslipLineDto = {
+    bloc,
+    categorie,
+    libelle: l.libelle.trim(),
+    base: l.base,
+    quantite: l.quantite,
+    tauxSalarial: l.tauxSalarial,
+    montantSalarial: l.montantSalarial,
+    tauxPatronal: l.tauxPatronal,
+    montantPatronal: l.montantPatronal,
+    montant: l.montant,
+    frequence: null,
+    regimeSocial: null,
+    imposable: null,
+    exonerationIr: null,
+    verseEnNumeraire: !(bloc === 'REMUNERATION' && categorie === 'avantage_nature'),
+    modeEpargne: bloc === 'PARTAGE_VALEUR' ? (l.modeEpargne ?? 'INCONNU') : null,
+    csgCrds: l.csgCrds,
+    periodeRattachement: l.periodeRattachement,
+  }
+
+  // Titres-restaurant sans montants : repli nombre × valeur unitaire.
+  if (
+    categorie === 'titres_restaurant' &&
+    line.montantSalarial == null &&
+    line.montantPatronal == null &&
+    line.quantite != null
+  ) {
+    line.montantPatronal = toDecimalString(parseMoney(line.quantite) * TICKET_RESTAURANT_UNIT_EUR)
+  }
+
+  return line
 }
 
-/** Repli : nombre de titres × valeur unitaire entreprise. */
-export function computeTicketRestaurantAmount(ticketCount: number): string {
-  return toDecimalString(ticketCount * TICKET_RESTAURANT_UNIT_EUR)
-}
+/** Transforme la réponse validée de l'IA en brouillon éditable + avertissements de cohérence. */
+export function normalizePayslipExtraction(
+  raw: PayslipExtractionRaw,
+  extractedBy: string,
+): { draft: PayslipDraft; warnings: PayslipWarning[] } {
+  const lines = raw.lines.map(normalizeLine).filter((l): l is PayslipLineDto => l != null)
+  const today = new Date()
+  const cumuls = raw.cumuls
+    ? Object.fromEntries(Object.entries(raw.cumuls).filter((e): e is [string, string] => e[1] != null))
+    : null
 
-type BonusLine = NonNullable<PayslipExtraction['bonuses']>[number]
-type NonIncludedLine = NonNullable<PayslipExtraction['nonIncludedPrimes']>[number]
-
-function mergeIndemnityLinesByCategory(lines: NonIncludedLine[]): NonIncludedLine[] {
-  const byCategory = new Map<string, { amount: number; descriptions: string[] }>()
-  for (const line of lines) {
-    const prev = byCategory.get(line.category) ?? { amount: 0, descriptions: [] }
-    prev.amount += parseMoney(line.amount)
-    if (line.description?.trim()) prev.descriptions.push(line.description.trim())
-    byCategory.set(line.category, prev)
-  }
-  return [...byCategory.entries()].map(([category, { amount, descriptions }]) => ({
-    category,
-    description: descriptions.join(' ; '),
-    amount: toDecimalString(amount),
-  }))
-}
-
-/**
- * Classe IK / DFS / congés mal placés en listes de primes.
- * Ne modifie pas brut / net : ces totaux viennent des libellés récap du bulletin (déjà hors IK).
- */
-function processPrimeLists(bonuses: BonusLine[], nonIncluded: NonIncludedLine[]): {
-  bonuses: BonusLine[]
-  nonIncludedPrimes: NonIncludedLine[]
-  addCongesToBrut: number
-} {
-  let addCongesToBrut = 0
-  const keptBonuses: BonusLine[] = []
-  const keptNonIncluded: NonIncludedLine[] = []
-  const indemnityLines: NonIncludedLine[] = []
-
-  const pushIndemnity = (category: string, amount: string, description: string) => {
-    const n = parseMoney(amount)
-    if (n <= 0) return
-    indemnityLines.push({
-      category,
-      description,
-      amount: toDecimalString(n),
-    })
+  const draft: PayslipDraft = {
+    kind: raw.kind,
+    year: raw.year ?? today.getFullYear(),
+    month: raw.month ?? today.getMonth() + 1,
+    label: raw.label,
+    brut: raw.brut,
+    netAvantImpot: raw.netAvantImpot,
+    netImposable: raw.netImposable,
+    netSocial: raw.netSocial,
+    netPaye: raw.netPaye,
+    prelevementSource: raw.prelevementSource,
+    tauxPas: raw.tauxPas,
+    totalCotisationsSalariales: raw.totalCotisationsSalariales,
+    totalCotisationsPatronales: raw.totalCotisationsPatronales,
+    coutEmployeur: raw.coutEmployeur,
+    heuresTravaillees: raw.heuresTravaillees,
+    plafondSS: raw.plafondSS,
+    cumuls: cumuls && Object.keys(cumuls).length > 0 ? cumuls : null,
+    notes: raw.notes,
+    extractedBy,
+    lines,
   }
 
-  for (const b of bonuses) {
-    const desc = b.description ?? ''
-    if (isNonIncludedIndemnityCategory(b.category, desc)) {
-      pushIndemnity(normalizeNonIncludedIndemnityCategory(b.category, desc)!, b.amount, desc)
-    } else if (isBaseSalaryElementCategory(b.category, desc)) {
-      addCongesToBrut += parseMoney(b.amount)
-    } else {
-      keptBonuses.push({
-        ...b,
-        category: normalizePrimeCategoryLabel(b.category, desc),
-      })
-    }
-  }
-
-  for (const p of nonIncluded) {
-    const desc = p.description ?? ''
-    if (isNonIncludedIndemnityCategory(p.category, desc)) {
-      pushIndemnity(normalizeNonIncludedIndemnityCategory(p.category, desc)!, p.amount, desc)
-    } else if (isBaseSalaryElementCategory(p.category, desc)) {
-      addCongesToBrut += parseMoney(p.amount)
-    } else {
-      keptNonIncluded.push({
-        ...p,
-        category: normalizePrimeCategoryLabel(p.category, desc),
-      })
-    }
-  }
-
-  const mergedIndemnities = mergeIndemnityLinesByCategory(indemnityLines)
-  const nonIncludedPrimes = [...keptNonIncluded, ...mergedIndemnities]
-
-  return { bonuses: keptBonuses, nonIncludedPrimes, addCongesToBrut }
-}
-
-/**
- * Post-traitement léger : reclasse les lignes de primes, recalcule les tickets si besoin.
- * Les montants brut / net imposable / net payé renvoyés par Mistral ne sont pas retranchés (pas de double exclusion IK).
- */
-export function normalizePayslipExtraction(raw: PayslipExtraction): PayslipExtraction {
-  const ticketCount = parseCount(raw.ticketRestaurantCount)
-  const fromAi = parseMoney(raw.ticketRestaurant)
-  const ticketRestaurant =
-    fromAi > 0
-      ? toDecimalString(fromAi)
-      : ticketCount != null
-        ? computeTicketRestaurantAmount(ticketCount)
-        : raw.ticketRestaurant
-
-  const { bonuses, nonIncludedPrimes, addCongesToBrut } = processPrimeLists(
-    raw.bonuses ?? [],
-    raw.nonIncludedPrimes ?? [],
-  )
-
-  let primesIndemnitesIncluses = raw.primesIndemnitesIncluses
-  if (primesIndemnitesIncluses != null && addCongesToBrut > 0) {
-    const adjusted = Math.max(0, parseMoney(primesIndemnitesIncluses) - addCongesToBrut)
-    primesIndemnitesIncluses = adjusted > 0 ? toDecimalString(adjusted) : undefined
-  }
-
-  let brut = raw.brut
-  let netImposable = raw.netImposable
-  let netPaye = raw.netPaye
-  if (addCongesToBrut > 0) {
-    brut = addMoneyField(brut, addCongesToBrut)
-    netImposable = addMoneyField(netImposable, addCongesToBrut)
-    netPaye = addMoneyField(netPaye, addCongesToBrut)
-  }
-
-  return {
-    ...raw,
-    brut,
-    netImposable,
-    netPaye,
-    ticketRestaurant,
-    bonuses,
-    nonIncludedPrimes,
-    primesIndemnitesIncluses,
-  }
+  return { draft, warnings: checkPayslipConsistency(draft) }
 }

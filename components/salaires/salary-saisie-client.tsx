@@ -3,10 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { Coins, FileText, FileUp, Loader2, Pencil, Plus, Receipt, Trash2, Upload, Download } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Eye, FileUp, Loader2, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
 import {
   Dialog,
   DialogContent,
@@ -31,209 +30,71 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { formatMonthLongName } from '@/lib/salary-month-label'
-
-type BonusBasis = 'BRUT' | 'NET'
-type BonusFlow = 'FIXE' | 'VARIABLE'
-
-type BonusDto = {
-  id: string
-  category: string
-  description: string
-  amount: string
-  basis: BonusBasis
-  flow: BonusFlow
-}
-
-type NonIncludedPrimeDto = {
-  id: string
-  category: string
-  description: string
-  amount: string
-}
-
-export type SalaryMonthDto = {
-  id: string
-  year: number
-  month: number
-  employerId: string | null
-  brut: string
-  netImposable: string
-  netPaye: string
-  prelevementSource: string
-  ticketRestaurant: string
-  primesIndemnitesIncluses: string
-  primesIndemnitesNonIncluses: string
-  explanation: string | null
-  bonuses: BonusDto[]
-  nonIncludedPrimes: NonIncludedPrimeDto[]
-}
+import { checkPayslipConsistency, type PayslipWarning } from '@/lib/payslip-consistency'
+import type { PayslipDraft, PayslipDto } from '@/lib/payslip-types'
+import { PayslipEditor } from '@/components/salaires/payslip-editor'
+import { PayslipView } from '@/components/salaires/payslip-view'
+import {
+  cotisationsSalariales,
+  draftFromDto,
+  draftToBody,
+  emptyDraft,
+  fetchOpts,
+  formatAmount,
+  parseAmount,
+  partageValeurBrut,
+  payslipExtractErrorKey,
+  variableBrut,
+} from '@/components/salaires/payslip-format'
 
 type EmployerDto = { id: string; name: string }
 
-type PendingBonus = {
-  category: string
-  description: string
-  amount: string
-  basis: BonusBasis
-  flow: BonusFlow
+type QueueStatus = 'extracting' | 'ready' | 'saved' | 'duplicate' | 'error' | 'waiting'
+
+type QueueItem = {
+  id: string
+  fileName: string
+  status: QueueStatus
+  draft?: PayslipDraft
+  warnings?: PayslipWarning[]
+  error?: string
 }
 
-type PendingNonIncludedPrime = {
-  category: string
-  description: string
-  amount: string
-}
+type EditorState = { draft: PayslipDraft; editingId: string | null; queueId: string | null }
 
-type PayslipExtractionPayload = {
-  year?: number
-  month?: number
-  brut: string
-  netImposable: string
-  netPaye: string
-  prelevementSource: string
-  ticketRestaurant: string
-  explanation?: string | null
-  primesIndemnitesIncluses?: string
-  bonuses?: Array<{
-    category: string
-    description?: string
-    amount: string
-    basis?: BonusBasis
-    flow?: BonusFlow
-  }>
-  nonIncludedPrimes?: Array<{
-    category: string
-    description?: string
-    amount: string
-  }>
-}
+type SaveResult = 'ok' | 'duplicate' | 'invalid' | 'error'
 
 export type SalarySaisieClientProps = {
   payslipExtractionEnabled?: boolean
 }
 
-const MONTH_NUMBERS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const
-
-const emptyBulletinForm = {
-  year: new Date().getFullYear(),
-  month: new Date().getMonth() + 1,
-  brut: '',
-  netImposable: '',
-  netPaye: '',
-  prelevementSource: '',
-  ticketRestaurant: '',
-  explanation: '',
-}
-
-const fetchOpts: RequestInit = { credentials: 'include' }
-
 function periodLabel(year: number, month: number, language: string): string {
   return `${formatMonthLongName(month, language)} ${year}`
 }
 
-function parsePrimeAmount(s: string): number {
-  const n = Number(String(s).replace(',', '.').trim())
-  return Number.isFinite(n) ? n : 0
-}
-
-function sumIncluses(row: SalaryMonthDto): number {
-  const fromBonuses = (row.bonuses ?? []).reduce((s, b) => s + parsePrimeAmount(b.amount), 0)
-  if (fromBonuses > 0) return fromBonuses
-  return parsePrimeAmount(row.primesIndemnitesIncluses)
-}
-
-function sumNonIncluses(row: SalaryMonthDto): number {
-  const fromLines = (row.nonIncludedPrimes ?? []).reduce((s, p) => s + parsePrimeAmount(p.amount), 0)
-  if (fromLines > 0) return fromLines
-  return parsePrimeAmount(row.primesIndemnitesNonIncluses)
-}
-
-function sumTotalPrimes(row: SalaryMonthDto): number {
-  return sumIncluses(row) + sumNonIncluses(row)
-}
-
-/** Brut bulletin moins les primes / indemnités déjà incluses dans ce brut. */
-function brutHorsPrimesIncluses(row: SalaryMonthDto): number {
-  return Math.max(0, parsePrimeAmount(row.brut) - sumIncluses(row))
-}
-
-function formatAmount(n: number, locale: string): string {
-  const loc = locale === 'en' ? 'en-GB' : 'fr-FR'
-  return n.toLocaleString(loc, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
-/** Montant inclus + lignes de prime détaillées. */
-function primesInclusesItemCount(row: SalaryMonthDto): number {
-  const bonusCount = row.bonuses?.length ?? 0
-  const inclusesField = parsePrimeAmount(row.primesIndemnitesIncluses) > 0 ? 1 : 0
-  return bonusCount + inclusesField
-}
-
-function nonInclusesItemCount(row: SalaryMonthDto): number {
-  return row.nonIncludedPrimes?.length ?? 0
-}
-
-function payslipExtractErrorKey(code: string | undefined): string {
-  switch (code) {
-    case 'file_too_large':
-      return 'salaries.extractErrorFileTooLarge'
-    case 'invalid_file_type':
-      return 'salaries.extractErrorInvalidType'
-    case 'payslip_extraction_disabled':
-      return 'salaries.extractErrorDisabled'
-    case 'mistral_api_error':
-      return 'salaries.extractErrorApi'
-    case 'not_a_payslip':
-      return 'salaries.extractErrorNotPayslip'
-    default:
-      return 'salaries.extractError'
-  }
-}
-
 export function SalarySaisieClient({ payslipExtractionEnabled = false }: SalarySaisieClientProps) {
   const { t, i18n } = useTranslation()
-  const payslipInputRef = useRef<HTMLInputElement>(null)
-  const [months, setMonths] = useState<SalaryMonthDto[]>([])
+  const lng = i18n.language
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [payslips, setPayslips] = useState<PayslipDto[]>([])
   const [employers, setEmployers] = useState<EmployerDto[]>([])
   const [loading, setLoading] = useState(true)
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [form, setForm] = useState(emptyBulletinForm)
-  const [extracting, setExtracting] = useState(false)
-  const [uploadedPayslipName, setUploadedPayslipName] = useState<string | null>(null)
-  const [pendingPrimesIncluses, setPendingPrimesIncluses] = useState<string | null>(null)
-  const [pendingBonuses, setPendingBonuses] = useState<PendingBonus[]>([])
-  const [pendingNonIncludedPrimes, setPendingNonIncludedPrimes] = useState<PendingNonIncludedPrime[]>([])
-  const [primesDialogMonthId, setPrimesDialogMonthId] = useState<string | null>(null)
-  const [primesIncluses, setPrimesIncluses] = useState('0')
-  const [nonInclusesDialogMonthId, setNonInclusesDialogMonthId] = useState<string | null>(null)
-  const [bonusDraft, setBonusDraft] = useState({
-    category: '',
-    description: '',
-    amount: '',
-    basis: 'BRUT' as BonusBasis,
-    flow: 'VARIABLE' as BonusFlow,
-  })
-  const [nonIncludedDraft, setNonIncludedDraft] = useState({
-    category: '',
-    description: '',
-    amount: '',
-  })
-  const [overwriteTarget, setOverwriteTarget] = useState<SalaryMonthDto | null>(null)
+  const [yearFilter, setYearFilter] = useState<string>('all')
+  const [editor, setEditor] = useState<EditorState | null>(null)
+  const [viewing, setViewing] = useState<PayslipDto | null>(null)
+  const [overwrite, setOverwrite] = useState<EditorState | null>(null)
   const [saving, setSaving] = useState(false)
+  const [queue, setQueue] = useState<QueueItem[]>([])
 
   const load = useCallback(async () => {
-    setLoading(true)
     try {
-      const [mRes, eRes] = await Promise.all([
-        fetch('/api/salaires/months', fetchOpts),
+      const [pRes, eRes] = await Promise.all([
+        fetch('/api/salaires/payslips', fetchOpts),
         fetch('/api/salaires/employers', fetchOpts),
       ])
-      if (!mRes.ok) throw new Error('months')
-      if (!eRes.ok) throw new Error('employers')
-      setMonths(await mRes.json())
+      if (!pRes.ok || !eRes.ok) throw new Error('load')
+      setPayslips(await pRes.json())
       setEmployers(await eRes.json())
     } catch {
       toast.error(t('salaries.loadError'))
@@ -246,880 +107,403 @@ export function SalarySaisieClient({ payslipExtractionEnabled = false }: SalaryS
     void load()
   }, [load])
 
-  const sorted = useMemo(
-    () => [...months].sort((a, b) => (a.year !== b.year ? b.year - a.year : b.month - a.month)),
-    [months],
+  const years = useMemo(() => [...new Set(payslips.map((p) => p.year))].sort((a, b) => b - a), [payslips])
+
+  const rows = useMemo(
+    () =>
+      payslips
+        .filter((p) => yearFilter === 'all' || p.year === Number(yearFilter))
+        .sort((a, b) => b.year - a.year || b.month - a.month || a.kind.localeCompare(b.kind)),
+    [payslips, yearFilter],
   )
 
-  const pendingPrimePreview = useMemo(() => {
-    const lines: { name: string; amount: string }[] = []
-    for (const b of pendingBonuses) {
-      lines.push({ name: b.category, amount: b.amount })
-    }
-    if (
-      pendingPrimesIncluses != null &&
-      parsePrimeAmount(pendingPrimesIncluses) > 0 &&
-      pendingBonuses.length === 0
-    ) {
-      lines.push({ name: t('salaries.colPrimesIncluses'), amount: pendingPrimesIncluses })
-    }
-    for (const p of pendingNonIncludedPrimes) {
-      lines.push({ name: p.category, amount: p.amount })
-    }
-    return lines
-  }, [pendingBonuses, pendingNonIncludedPrimes, pendingPrimesIncluses, t])
+  const employerName = (id: string | null) => (id ? (employers.find((e) => e.id === id)?.name ?? '—') : '—')
 
-  const primesDialogRow = primesDialogMonthId ? months.find((m) => m.id === primesDialogMonthId) : null
-  const nonInclusesDialogRow = nonInclusesDialogMonthId
-    ? months.find((m) => m.id === nonInclusesDialogMonthId)
-    : null
-  const primesDialogBonuses = primesDialogRow?.bonuses ?? []
-  const nonInclusesDialogLines = nonInclusesDialogRow?.nonIncludedPrimes ?? []
+  const updateQueueItem = (id: string, patch: Partial<QueueItem>) =>
+    setQueue((q) => q.map((item) => (item.id === id ? { ...item, ...patch } : item)))
 
-  const clearPayslipPending = () => {
-    setPendingPrimesIncluses(null)
-    setPendingBonuses([])
-    setPendingNonIncludedPrimes([])
-  }
-
-  const clearPayslipExtraction = () => {
-    setUploadedPayslipName(null)
-    setForm({ ...emptyBulletinForm })
-    clearPayslipPending()
-  }
-
-  const openNew = () => {
-    setEditingId(null)
-    clearPayslipExtraction()
-    setDialogOpen(true)
-  }
-
-  const openEdit = (row: SalaryMonthDto) => {
-    setEditingId(row.id)
-    setUploadedPayslipName(null)
-    setForm({
-      year: row.year,
-      month: row.month,
-      brut: row.brut,
-      netImposable: row.netImposable,
-      netPaye: row.netPaye,
-      prelevementSource: row.prelevementSource,
-      ticketRestaurant: row.ticketRestaurant,
-      explanation: row.explanation ?? '',
+  /** Enregistre un brouillon. Ne gère pas l'UI : renvoie `duplicate` si le mois a déjà un bulletin. */
+  const persist = async (state: EditorState, forceOverwrite: boolean): Promise<SaveResult> => {
+    const url = state.editingId
+      ? `/api/salaires/payslips/${state.editingId}`
+      : `/api/salaires/payslips${forceOverwrite ? '?overwrite=1' : ''}`
+    const res = await fetch(url, {
+      method: state.editingId ? 'PUT' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(draftToBody(state.draft)),
+      ...fetchOpts,
     })
-    setDialogOpen(true)
+    if (res.status === 409) return 'duplicate'
+    if (res.status === 400) return 'invalid'
+    if (!res.ok) return 'error'
+    if (state.queueId) updateQueueItem(state.queueId, { status: 'saved' })
+    return 'ok'
   }
 
-  const openPrimesDialog = (row: SalaryMonthDto) => {
-    setPrimesDialogMonthId(row.id)
-    setPrimesIncluses(row.primesIndemnitesIncluses)
-    setBonusDraft({ category: '', description: '', amount: '', basis: 'BRUT', flow: 'VARIABLE' })
-  }
-
-  const openNonInclusesDialog = (row: SalaryMonthDto) => {
-    setNonInclusesDialogMonthId(row.id)
-    setNonIncludedDraft({ category: '', description: '', amount: '' })
-  }
-
-  const buildMonthBody = (overwrite: boolean): Record<string, unknown> => {
-    const body: Record<string, unknown> = {
-      year: form.year,
-      month: form.month,
-      brut: form.brut,
-      netImposable: form.netImposable,
-      netPaye: form.netPaye,
-      prelevementSource: form.prelevementSource,
-      ticketRestaurant: form.ticketRestaurant,
-      explanation: form.explanation || null,
-    }
-    if (pendingPrimesIncluses != null && pendingPrimesIncluses.trim() !== '') {
-      body.primesIndemnitesIncluses = pendingPrimesIncluses
-    } else if (overwrite) {
-      body.primesIndemnitesIncluses = '0'
-    }
-    if (overwrite) {
-      body.primesIndemnitesNonIncluses = '0'
-    }
-    return body
-  }
-
-  const clearMonthPrimes = async (row: SalaryMonthDto) => {
-    await Promise.all(
-      (row.bonuses ?? []).map((b) =>
-        fetch(`/api/salaires/months/${row.id}/bonuses/${b.id}`, { method: 'DELETE', ...fetchOpts }),
-      ),
-    )
-    await Promise.all(
-      (row.nonIncludedPrimes ?? []).map((p) =>
-        fetch(`/api/salaires/months/${row.id}/non-included-primes/${p.id}`, {
-          method: 'DELETE',
-          ...fetchOpts,
-        }),
-      ),
-    )
-  }
-
-  const addPendingPrimes = async (monthId: string) => {
-    for (const b of pendingBonuses) {
-      const bonusRes = await fetch(`/api/salaires/months/${monthId}/bonuses`, {
-        ...fetchOpts,
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          category: b.category,
-          description: b.description,
-          amount: b.amount,
-          basis: b.basis,
-          flow: b.flow,
-        }),
-      })
-      if (!bonusRes.ok) throw new Error('bonus')
-    }
-    for (const p of pendingNonIncludedPrimes) {
-      const primeRes = await fetch(`/api/salaires/months/${monthId}/non-included-primes`, {
-        ...fetchOpts,
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          category: p.category,
-          description: p.description,
-          amount: p.amount,
-        }),
-      })
-      if (!primeRes.ok) throw new Error('non_included')
-    }
-  }
-
-  const persistMonth = async (replaceExistingId: string | null) => {
-    const isOverwrite = replaceExistingId != null && !editingId
-    const body = buildMonthBody(isOverwrite)
-    const targetId = editingId ?? replaceExistingId
-    const url = targetId ? `/api/salaires/months/${targetId}` : '/api/salaires/months'
-    const method = targetId ? 'PATCH' : 'POST'
-
+  const saveEditor = async (state: EditorState, forceOverwrite = false) => {
     setSaving(true)
     try {
-      const res = await fetch(url, {
-        ...fetchOpts,
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-      if (!res.ok) {
-        if (res.status === 409 && !editingId) {
-          const existing = months.find((m) => m.year === form.year && m.month === form.month)
-          if (existing) {
-            setOverwriteTarget(existing)
-            return
-          }
-        }
-        toast.error(t('salaries.saveError'))
+      const result = await persist(state, forceOverwrite)
+      if (result === 'duplicate') {
+        if (state.editingId) toast.error(t('salaries.duplicateMonth'))
+        else setOverwrite(state)
         return
       }
-      const saved = (await res.json()) as SalaryMonthDto
-      const monthId = targetId ?? saved.id
-
-      if (isOverwrite) {
-        const prev = months.find((m) => m.id === replaceExistingId)
-        if (prev) await clearMonthPrimes(prev)
+      if (result === 'invalid' || result === 'error') {
+        toast.error(t(result === 'invalid' ? 'salaries.invalidPayslip' : 'salaries.saveError'))
+        return
       }
-
-      if (!editingId) {
-        await addPendingPrimes(monthId)
-      }
-
       toast.success(t('salaries.saveOk'))
-      setUploadedPayslipName(null)
-      clearPayslipPending()
-      setDialogOpen(false)
-      setOverwriteTarget(null)
-      void load()
-    } catch {
-      toast.error(t('salaries.saveError'))
+      setEditor(null)
+      setOverwrite(null)
+      await load()
     } finally {
       setSaving(false)
     }
   }
 
-  const saveMonth = async () => {
-    if (!editingId) {
-      const existing = months.find((m) => m.year === form.year && m.month === form.month)
-      if (existing) {
-        setOverwriteTarget(existing)
-        return
-      }
-    }
-    await persistMonth(null)
-  }
-
-  const confirmOverwriteMonth = async () => {
-    if (!overwriteTarget) return
-    const id = overwriteTarget.id
-    setOverwriteTarget(null)
-    await persistMonth(id)
-  }
-
-  const onPayslipFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (!file) return
-    setExtracting(true)
-    try {
-      const fd = new FormData()
-      fd.set('file', file)
-      const res = await fetch('/api/salaires/payslip/extract', {
-        method: 'POST',
-        body: fd,
-        credentials: 'include',
-      })
-      if (!res.ok) {
-        const j = (await res.json().catch(() => ({}))) as { error?: string }
-        toast.error(t(payslipExtractErrorKey(j.error)))
-        return
-      }
-      const { extraction } = (await res.json()) as { extraction: PayslipExtractionPayload }
-      setForm((f) => ({
-        ...f,
-        year: extraction.year ?? f.year,
-        month: extraction.month ?? f.month,
-        brut: String(extraction.brut ?? ''),
-        netImposable: String(extraction.netImposable ?? ''),
-        netPaye: String(extraction.netPaye ?? ''),
-        prelevementSource: String(extraction.prelevementSource ?? ''),
-        ticketRestaurant: String(extraction.ticketRestaurant ?? ''),
-        explanation: extraction.explanation ?? '',
-      }))
-      setPendingPrimesIncluses(
-        extraction.primesIndemnitesIncluses != null ? String(extraction.primesIndemnitesIncluses) : null,
-      )
-      setPendingBonuses(
-        (extraction.bonuses ?? []).map((b) => ({
-          category: b.category,
-          description: b.description ?? '',
-          amount: String(b.amount),
-          basis: b.basis ?? 'BRUT',
-          flow: b.flow ?? 'VARIABLE',
-        })),
-      )
-      setPendingNonIncludedPrimes(
-        (extraction.nonIncludedPrimes ?? []).map((p) => ({
-          category: p.category,
-          description: p.description ?? '',
-          amount: String(p.amount),
-        })),
-      )
-      setUploadedPayslipName(file.name)
-      toast.success(t('salaries.extractOk'))
-    } finally {
-      setExtracting(false)
-    }
-  }
-
-  const savePrimesIncluses = async () => {
-    if (!primesDialogMonthId) return
-    const res = await fetch(`/api/salaires/months/${primesDialogMonthId}`, {
-      ...fetchOpts,
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ primesIndemnitesIncluses: primesIncluses }),
-    })
+  const deletePayslip = async (p: PayslipDto) => {
+    if (!confirm(t('salaries.confirmDelete'))) return
+    const res = await fetch(`/api/salaires/payslips/${p.id}`, { method: 'DELETE', ...fetchOpts })
     if (!res.ok) {
-      toast.error(t('salaries.saveError'))
+      toast.error(t('salaries.deleteError'))
       return
     }
-    toast.success(t('salaries.primesSaveOk'))
+    toast.success(t('salaries.deleteOk'))
     await load()
   }
 
-  const deleteMonth = async (id: string) => {
-    if (!confirm(t('salaries.confirmDelete'))) return
-    const res = await fetch(`/api/salaires/months/${id}`, { method: 'DELETE', ...fetchOpts })
-    if (!res.ok) toast.error(t('salaries.deleteError'))
-    else {
-      toast.success(t('salaries.deleteOk'))
-      void load()
-    }
-  }
-
-  const addBonus = async () => {
-    if (!primesDialogMonthId) return
-    if (!bonusDraft.category.trim() || !bonusDraft.amount) {
-      toast.error(t('salaries.bonusIncomplete'))
-      return
-    }
-    const res = await fetch(`/api/salaires/months/${primesDialogMonthId}/bonuses`, {
-      ...fetchOpts,
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        category: bonusDraft.category,
-        description: bonusDraft.description,
-        amount: bonusDraft.amount,
-        basis: bonusDraft.basis,
-        flow: bonusDraft.flow,
-      }),
-    })
-    if (!res.ok) toast.error(t('salaries.bonusError'))
-    else {
-      toast.success(t('salaries.bonusOk'))
-      setBonusDraft({ category: '', description: '', amount: '', basis: 'BRUT', flow: 'VARIABLE' })
-      await load()
-    }
-  }
-
-  const removeBonus = async (bonusId: string) => {
-    if (!primesDialogMonthId) return
-    const res = await fetch(`/api/salaires/months/${primesDialogMonthId}/bonuses/${bonusId}`, {
-      method: 'DELETE',
-      ...fetchOpts,
-    })
-    if (!res.ok) toast.error(t('salaries.bonusDeleteError'))
-    else {
-      toast.success(t('salaries.bonusDeleteOk'))
-      await load()
-    }
-  }
-
-  const addNonIncludedPrime = async () => {
-    if (!nonInclusesDialogMonthId) return
-    if (!nonIncludedDraft.category.trim() || !nonIncludedDraft.amount) {
-      toast.error(t('salaries.nonIncludedPrimeIncomplete'))
-      return
-    }
-    const res = await fetch(`/api/salaires/months/${nonInclusesDialogMonthId}/non-included-primes`, {
-      ...fetchOpts,
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        category: nonIncludedDraft.category,
-        description: nonIncludedDraft.description,
-        amount: nonIncludedDraft.amount,
-      }),
-    })
-    if (!res.ok) toast.error(t('salaries.nonIncludedPrimeError'))
-    else {
-      toast.success(t('salaries.nonIncludedPrimeOk'))
-      setNonIncludedDraft({ category: '', description: '', amount: '' })
-      await load()
-    }
-  }
-
-  const removeNonIncludedPrime = async (lineId: string) => {
-    if (!nonInclusesDialogMonthId) return
-    const res = await fetch(
-      `/api/salaires/months/${nonInclusesDialogMonthId}/non-included-primes/${lineId}`,
-      { method: 'DELETE', ...fetchOpts },
-    )
-    if (!res.ok) toast.error(t('salaries.nonIncludedPrimeDeleteError'))
-    else {
-      toast.success(t('salaries.nonIncludedPrimeDeleteOk'))
-      await load()
-    }
-  }
-
-  const onImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
+  /** Extrait les fichiers un par un (l'API Mistral est appelée séquentiellement). */
+  const onFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = [...(e.target.files ?? [])]
     e.target.value = ''
-    if (!file) return
-    const fd = new FormData()
-    fd.set('file', file)
-    const res = await fetch('/api/salaires/import', { method: 'POST', body: fd, credentials: 'include' })
-    if (!res.ok) {
-      const j = await res.json().catch(() => ({}))
-      toast.error(j.details?.join?.(', ') ?? t('salaries.importError'))
-      return
+    if (files.length === 0) return
+    const items: QueueItem[] = files.map((f) => ({ id: crypto.randomUUID(), fileName: f.name, status: 'waiting' }))
+    setQueue((q) => [...q, ...items])
+
+    for (const [i, file] of files.entries()) {
+      const id = items[i].id
+      updateQueueItem(id, { status: 'extracting' })
+      try {
+        const fd = new FormData()
+        fd.set('file', file)
+        const res = await fetch('/api/salaires/payslip/extract', { method: 'POST', body: fd, ...fetchOpts })
+        if (!res.ok) {
+          const j = (await res.json().catch(() => ({}))) as { error?: string }
+          updateQueueItem(id, { status: 'error', error: t(payslipExtractErrorKey(j.error)) })
+          continue
+        }
+        const { extraction, warnings } = (await res.json()) as {
+          extraction: PayslipDraft
+          warnings: PayslipWarning[]
+        }
+        updateQueueItem(id, { status: 'ready', draft: extraction, warnings })
+      } catch {
+        updateQueueItem(id, { status: 'error', error: t('salaries.extractError') })
+      }
     }
-    const j = await res.json()
-    toast.success(t('salaries.importOk', { count: j.imported ?? 0 }))
-    void load()
   }
 
-  const editingRow = editingId ? months.find((m) => m.id === editingId) : null
-  const employerAutoLabel =
-    editingRow?.employerId != null
-      ? employers.find((e) => e.id === editingRow.employerId)?.name ?? '—'
-      : t('salaries.employerAssignedOnSave')
+  /** Enregistre d'un coup les extractions prêtes et sans alerte de cohérence. */
+  const saveAllReady = async () => {
+    const ready = queue.filter((q) => q.status === 'ready' && q.draft && (q.warnings?.length ?? 0) === 0)
+    setSaving(true)
+    let saved = 0
+    try {
+      for (const item of ready) {
+        const result = await persist({ draft: item.draft!, editingId: null, queueId: item.id }, false)
+        if (result === 'ok') saved++
+        else if (result === 'duplicate') updateQueueItem(item.id, { status: 'duplicate' })
+        else {
+          const error = t(result === 'invalid' ? 'salaries.invalidPayslip' : 'salaries.saveError')
+          updateQueueItem(item.id, { status: 'error', error })
+        }
+      }
+    } finally {
+      setSaving(false)
+    }
+    toast.success(t('salaries.savedCount', { count: saved }))
+    await load()
+  }
 
-  const bulletinFields = [
-    ['brut', t('salaries.colBrut')],
-    ['netImposable', t('salaries.colNetImposable')],
-    ['netPaye', t('salaries.colNetPaye')],
-    ['prelevementSource', t('salaries.colPrelevement')],
-    ['ticketRestaurant', t('salaries.colTicket')],
-  ] as const
+  const queueReadyClean = queue.filter((q) => q.status === 'ready' && (q.warnings?.length ?? 0) === 0).length
+  const extracting = queue.some((q) => q.status === 'extracting' || q.status === 'waiting')
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-4 md:p-6">
       <Card>
-        <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <CardTitle>{t('salaries.saisieTitle')}</CardTitle>
             <CardDescription>{t('salaries.saisieLead')}</CardDescription>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button type="button" variant="outline" size="sm" asChild>
-              <a href="/api/salaires/template">
-                <Download className="h-4 w-4" />
-                {t('salaries.downloadTemplate')}
-              </a>
-            </Button>
-            <Button type="button" variant="outline" size="sm" asChild>
-              <label className="cursor-pointer">
-                <input type="file" accept=".csv,text/csv" className="sr-only" onChange={(ev) => void onImport(ev)} />
-                <Upload className="h-4 w-4" />
-                {t('salaries.importExcel')}
-              </label>
-            </Button>
-            <Button type="button" size="sm" onClick={openNew}>
+            {payslipExtractionEnabled ? (
+              <>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept=".pdf,image/jpeg,image/png,image/webp"
+                  className="sr-only"
+                  onChange={(ev) => void onFiles(ev)}
+                />
+                <Button type="button" variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()}>
+                  {extracting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4" />}
+                  {t('salaries.fromPayslips')}
+                </Button>
+              </>
+            ) : null}
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => setEditor({ draft: emptyDraft(), editingId: null, queueId: null })}
+            >
               <Plus className="h-4 w-4" />
-              {t('salaries.addMonth')}
+              {t('salaries.addPayslip')}
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
+
+        {queue.length > 0 ? (
+          <CardContent className="border-t border-border pt-4">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold">{t('salaries.queueTitle')}</h3>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={saving || queueReadyClean === 0}
+                  onClick={() => void saveAllReady()}
+                >
+                  {t('salaries.saveAllReady', { count: queueReadyClean })}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  disabled={extracting}
+                  onClick={() => setQueue((q) => q.filter((i) => i.status !== 'saved'))}
+                >
+                  {t('salaries.clearSaved')}
+                </Button>
+              </div>
+            </div>
+            <ul className="divide-y divide-border rounded-md border border-border text-sm">
+              {queue.map((item) => (
+                <li key={item.id} className="flex items-center gap-3 px-3 py-2">
+                  <QueueStatusIcon status={item.status} warnings={item.warnings?.length ?? 0} />
+                  <span className="min-w-0 flex-1 truncate" title={item.fileName}>
+                    {item.fileName}
+                    {item.draft ? (
+                      <span className="ml-2 text-muted-foreground">
+                        {periodLabel(item.draft.year, item.draft.month, lng)}
+                        {item.draft.kind === 'EPARGNE_SALARIALE' ? ` · ${t('salaries.kindEpargne')}` : ''}
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {item.status === 'error'
+                      ? item.error
+                      : item.status === 'ready' && (item.warnings?.length ?? 0) > 0
+                        ? t('salaries.queueWarnings', { count: item.warnings!.length })
+                        : t(`salaries.queueStatus.${item.status}`)}
+                  </span>
+                  {item.draft && (item.status === 'ready' || item.status === 'duplicate') ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setEditor({ draft: item.draft!, editingId: null, queueId: item.id })}
+                    >
+                      {t('salaries.review')}
+                    </Button>
+                  ) : null}
+                  {item.status !== 'extracting' && item.status !== 'waiting' ? (
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8"
+                      aria-label={t('salaries.removeFromQueue')}
+                      onClick={() => setQueue((q) => q.filter((i) => i.id !== item.id))}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        ) : null}
+
+        <CardContent className={queue.length > 0 ? 'pt-2' : undefined}>
+          <div className="mb-3 flex justify-end">
+            <Select value={yearFilter} onValueChange={setYearFilter}>
+              <SelectTrigger className="w-36">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('salaries.allYears')}</SelectItem>
+                {years.map((y) => (
+                  <SelectItem key={y} value={String(y)}>
+                    {y}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           {loading ? (
             <p className="text-sm text-muted-foreground">{t('salaries.loading')}</p>
+          ) : rows.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t('salaries.noData')}</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t('salaries.colYear')}</TableHead>
-                  <TableHead>{t('salaries.colMonth')}</TableHead>
-                  <TableHead className="text-right">{t('salaries.colBrut')}</TableHead>
-                  <TableHead className="text-right">{t('salaries.colNetPaye')}</TableHead>
-                  <TableHead className="text-right">{t('salaries.colSumPrimes')}</TableHead>
-                  <TableHead className="w-[168px]" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sorted.map((row) => {
-                  const primesCount = primesInclusesItemCount(row)
-                  const nonInclusesCount = nonInclusesItemCount(row)
-                  return (
-                  <TableRow key={row.id}>
-                    <TableCell>{row.year}</TableCell>
-                    <TableCell>{formatMonthLongName(row.month, i18n.language)}</TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {formatAmount(brutHorsPrimesIncluses(row), i18n.language)}
-                    </TableCell>
-                    <TableCell className="text-right">{row.netPaye}</TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {formatAmount(sumTotalPrimes(row), i18n.language)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="relative"
-                        title={t('salaries.managePrimes')}
-                        onClick={() => openPrimesDialog(row)}
-                      >
-                        <Coins className="h-4 w-4" />
-                        {primesCount > 0 ? (
-                          <span
-                            className="pointer-events-none absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-0.5 text-[10px] font-semibold leading-none text-primary-foreground"
-                            aria-hidden
-                          >
-                            {primesCount > 99 ? '99+' : primesCount}
-                          </span>
-                        ) : null}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="relative"
-                        title={t('salaries.managePrimesNonIncluses')}
-                        onClick={() => openNonInclusesDialog(row)}
-                      >
-                        <Receipt className="h-4 w-4" />
-                        {nonInclusesCount > 0 ? (
-                          <span
-                            className="pointer-events-none absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-0.5 text-[10px] font-semibold leading-none text-primary-foreground"
-                            aria-hidden
-                          >
-                            {nonInclusesCount > 99 ? '99+' : nonInclusesCount}
-                          </span>
-                        ) : null}
-                      </Button>
-                      <Button type="button" variant="ghost" size="icon" onClick={() => openEdit(row)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button type="button" variant="ghost" size="icon" onClick={() => void deleteMonth(row.id)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t('salaries.period')}</TableHead>
+                    <TableHead>{t('salaries.employer')}</TableHead>
+                    <TableHead className="text-right">{t('salaries.totals.brut')}</TableHead>
+                    <TableHead className="text-right">{t('salaries.colVariable')}</TableHead>
+                    <TableHead className="text-right">{t('salaries.colPartageValeur')}</TableHead>
+                    <TableHead className="text-right">{t('salaries.colCotisations')}</TableHead>
+                    <TableHead className="text-right">{t('salaries.totals.prelevementSource')}</TableHead>
+                    <TableHead className="text-right">{t('salaries.totals.netPaye')}</TableHead>
+                    <TableHead className="w-[140px]" />
                   </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {rows.map((p) => {
+                    const warnings = checkPayslipConsistency(p).length
+                    return (
+                      <TableRow key={p.id} className="cursor-pointer" onClick={() => setViewing(p)}>
+                        <TableCell className="whitespace-nowrap">
+                          {periodLabel(p.year, p.month, lng)}
+                          {p.kind === 'EPARGNE_SALARIALE' ? (
+                            <Badge variant="outline" className="ml-2">
+                              {p.label || t('salaries.kindEpargne')}
+                            </Badge>
+                          ) : null}
+                          {warnings > 0 ? (
+                            <AlertTriangle
+                              className="ml-2 inline h-4 w-4 text-amber-600"
+                              aria-label={t('salaries.queueWarnings', { count: warnings })}
+                            />
+                          ) : null}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{employerName(p.employerId)}</TableCell>
+                        <TableCell className="text-right tabular-nums">{formatAmount(parseAmount(p.brut), lng)}</TableCell>
+                        <TableCell className="text-right tabular-nums">{formatAmount(variableBrut(p), lng)}</TableCell>
+                        <TableCell className="text-right tabular-nums">{formatAmount(partageValeurBrut(p), lng)}</TableCell>
+                        <TableCell className="text-right tabular-nums">{formatAmount(cotisationsSalariales(p), lng)}</TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {formatAmount(parseAmount(p.prelevementSource), lng)}
+                        </TableCell>
+                        <TableCell className="text-right font-medium tabular-nums">
+                          {formatAmount(parseAmount(p.netPaye), lng)}
+                        </TableCell>
+                        <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                          <Button type="button" variant="ghost" size="icon" title={t('salaries.view')} onClick={() => setViewing(p)}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            title={t('salaries.edit')}
+                            onClick={() => setEditor({ draft: draftFromDto(p), editingId: p.id, queueId: null })}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button type="button" variant="ghost" size="icon" title={t('salaries.delete')} onClick={() => void deletePayslip(p)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="flex max-h-[min(92vh,100dvh-2rem)] max-w-[min(52rem,calc(100%-2rem))] flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl">
+      <Dialog open={editor != null} onOpenChange={(open) => !open && setEditor(null)}>
+        <DialogContent className="flex max-h-[min(92vh,100dvh-2rem)] max-w-[min(72rem,calc(100%-2rem))] flex-col gap-0 overflow-hidden p-0 sm:max-w-6xl">
           <DialogHeader className="shrink-0 border-b border-border px-6 py-4">
-            <DialogTitle>{editingId ? t('salaries.editMonth') : t('salaries.newMonth')}</DialogTitle>
+            <DialogTitle>{editor?.editingId ? t('salaries.editPayslip') : t('salaries.newPayslip')}</DialogTitle>
+            <DialogDescription>{t('salaries.editorLead')}</DialogDescription>
           </DialogHeader>
-          <div className="h-0 min-h-0 flex-1 overflow-y-auto overscroll-contain">
-            <div className="grid gap-5 px-6 py-5">
-              {payslipExtractionEnabled && !editingId ? (
-                <div
-                  className={
-                    uploadedPayslipName
-                      ? 'rounded-lg border border-border bg-muted/20 px-4 py-3'
-                      : 'rounded-lg border border-dashed border-border bg-muted/30 px-4 py-4'
-                  }
-                >
-                  <input
-                    ref={payslipInputRef}
-                    type="file"
-                    accept=".pdf,image/jpeg,image/png,image/webp"
-                    className="sr-only"
-                    disabled={extracting || uploadedPayslipName != null}
-                    onChange={(ev) => void onPayslipFile(ev)}
-                  />
-                  {uploadedPayslipName ? (
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-3">
-                        <FileText className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-                        <p className="min-w-0 flex-1 truncate text-sm font-medium" title={uploadedPayslipName}>
-                          {uploadedPayslipName}
-                        </p>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="shrink-0"
-                          disabled={extracting}
-                          aria-label={t('salaries.removePayslip')}
-                          onClick={clearPayslipExtraction}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                      {pendingPrimePreview.length > 0 ? (
-                        <div className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 border-t border-border pt-3 text-xs">
-                          <span className="font-medium text-foreground/80">{t('salaries.extractPendingName')}</span>
-                          <span className="text-right font-medium text-foreground/80">
-                            {t('salaries.extractPendingValue')}
-                          </span>
-                          {pendingPrimePreview.map((line, idx) => (
-                            <div key={`${line.name}-${idx}`} className="contents">
-                              <span className="text-muted-foreground">{line.name}</span>
-                              <span className="text-right tabular-nums text-muted-foreground">
-                                {formatAmount(parsePrimeAmount(line.amount), i18n.language)}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : (
-                    <>
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        className="w-full sm:w-auto"
-                        disabled={extracting}
-                        onClick={() => payslipInputRef.current?.click()}
-                      >
-                        {extracting ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <FileUp className="h-4 w-4" />
-                        )}
-                        {extracting ? t('salaries.extracting') : t('salaries.fromPayslip')}
-                      </Button>
-                      <p className="mt-2 text-xs text-muted-foreground">{t('salaries.fromPayslipAiHint')}</p>
-                    </>
-                  )}
-                </div>
-              ) : null}
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <Label>{t('salaries.colYear')}</Label>
-                  <Input
-                    type="number"
-                    className="mt-1.5"
-                    value={form.year}
-                    onChange={(e) => setForm((f) => ({ ...f, year: parseInt(e.target.value, 10) || f.year }))}
-                  />
-                </div>
-                <div>
-                  <Label>{t('salaries.colMonth')}</Label>
-                  <Select
-                    value={String(form.month)}
-                    onValueChange={(v) => {
-                      const m = parseInt(v, 10)
-                      setForm((f) => ({ ...f, month: m >= 1 && m <= 12 ? m : f.month }))
-                    }}
-                  >
-                    <SelectTrigger className="mt-1.5">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {MONTH_NUMBERS.map((m) => (
-                        <SelectItem key={m} value={String(m)}>
-                          {formatMonthLongName(m, i18n.language)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div>
-                <Label>{t('salaries.employer')}</Label>
-                <p className="mt-1.5 rounded-md border border-border bg-muted/40 px-3 py-2.5 text-sm">{employerAutoLabel}</p>
-                <p className="mt-1.5 text-xs text-muted-foreground">{t('salaries.employerFromPeriodsHelp')}</p>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {bulletinFields.map(([key, label]) => (
-                  <div key={key}>
-                    <Label>{label}</Label>
-                    <Input
-                      type="text"
-                      inputMode="decimal"
-                      className="mt-1.5"
-                      value={form[key]}
-                      onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
-                    />
-                  </div>
-                ))}
-              </div>
-              <div>
-                <Label>{t('salaries.colExplanation')}</Label>
-                <Input
-                  className="mt-1.5"
-                  value={form.explanation}
-                  onChange={(e) => setForm((f) => ({ ...f, explanation: e.target.value }))}
-                />
-              </div>
-            </div>
+          <div className="h-0 min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-5">
+            {editor ? (
+              <PayslipEditor
+                draft={editor.draft}
+                onChange={(draft) => setEditor((s) => (s ? { ...s, draft } : s))}
+              />
+            ) : null}
           </div>
-          <DialogFooter className="relative z-10 shrink-0 border-t border-border bg-background px-6 py-4">
-            <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+          <DialogFooter className="shrink-0 border-t border-border px-6 py-4">
+            <Button type="button" variant="outline" onClick={() => setEditor(null)}>
               {t('salaries.cancel')}
             </Button>
-            <Button type="button" disabled={saving} onClick={() => void saveMonth()}>
+            <Button type="button" disabled={saving || !editor} onClick={() => editor && void saveEditor(editor)}>
               {t('salaries.save')}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <Dialog
-        open={overwriteTarget != null}
-        onOpenChange={(open) => {
-          if (!open) setOverwriteTarget(null)
-        }}
-      >
+      <Dialog open={viewing != null} onOpenChange={(open) => !open && setViewing(null)}>
+        <DialogContent className="flex max-h-[min(92vh,100dvh-2rem)] max-w-[min(64rem,calc(100%-2rem))] flex-col gap-0 overflow-hidden p-0 sm:max-w-5xl">
+          <DialogHeader className="shrink-0 border-b border-border px-6 py-4">
+            <DialogTitle>
+              {viewing
+                ? `${periodLabel(viewing.year, viewing.month, lng)} · ${viewing.label || employerName(viewing.employerId)}`
+                : null}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="h-0 min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-5">
+            {viewing ? <PayslipView payslip={viewing} /> : null}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={overwrite != null} onOpenChange={(open) => !open && setOverwrite(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>{t('salaries.overwriteMonthTitle')}</DialogTitle>
             <DialogDescription>
-              {overwriteTarget
+              {overwrite
                 ? t('salaries.overwriteMonthMessage', {
-                    period: periodLabel(overwriteTarget.year, overwriteTarget.month, i18n.language),
+                    period: periodLabel(overwrite.draft.year, overwrite.draft.month, lng),
                   })
                 : null}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOverwriteTarget(null)}>
+            <Button type="button" variant="outline" onClick={() => setOverwrite(null)}>
               {t('salaries.overwriteMonthCancel')}
             </Button>
-            <Button type="button" disabled={saving} onClick={() => void confirmOverwriteMonth()}>
+            <Button type="button" disabled={saving} onClick={() => overwrite && void saveEditor(overwrite, true)}>
               {t('salaries.overwriteMonthConfirm')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={primesDialogMonthId != null}
-        onOpenChange={(open) => {
-          if (!open) setPrimesDialogMonthId(null)
-        }}
-      >
-        <DialogContent className="max-h-[90vh] max-w-[min(40rem,calc(100%-2rem))] overflow-hidden sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle>
-              {primesDialogRow
-                ? t('salaries.primesDialogTitle', {
-                    period: periodLabel(primesDialogRow.year, primesDialogRow.month, i18n.language),
-                  })
-                : t('salaries.managePrimes')}
-            </DialogTitle>
-            <DialogDescription>{t('salaries.primesDialogLead')}</DialogDescription>
-          </DialogHeader>
-          <ScrollArea className="max-h-[min(60vh,28rem)] pr-3">
-            <div className="grid gap-5 py-1">
-              <div>
-                <Label>{t('salaries.colPrimesIncluses')}</Label>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  className="mt-1.5"
-                  value={primesIncluses}
-                  onChange={(e) => setPrimesIncluses(e.target.value)}
-                />
-              </div>
-              <div className="space-y-3 border-t border-border pt-4">
-                <p className="text-sm font-medium">{t('salaries.bonusesTitle')}</p>
-                <ul className="space-y-2 text-sm">
-                  {primesDialogBonuses.map((b) => (
-                    <li key={b.id} className="flex items-center justify-between gap-2 rounded-md border border-border px-3 py-2">
-                      <span>
-                        {b.category} — {b.amount} ({b.basis}/{b.flow})
-                      </span>
-                      <Button type="button" variant="ghost" size="sm" onClick={() => void removeBonus(b.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </li>
-                  ))}
-                  {primesDialogBonuses.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">{t('salaries.noData')}</p>
-                  ) : null}
-                </ul>
-                <div className="grid gap-2">
-                  <Input
-                    placeholder={t('salaries.bonusCategory')}
-                    value={bonusDraft.category}
-                    onChange={(e) => setBonusDraft((d) => ({ ...d, category: e.target.value }))}
-                  />
-                  <Input
-                    placeholder={t('salaries.bonusDescription')}
-                    value={bonusDraft.description}
-                    onChange={(e) => setBonusDraft((d) => ({ ...d, description: e.target.value }))}
-                  />
-                  <Input
-                    placeholder={t('salaries.bonusAmount')}
-                    value={bonusDraft.amount}
-                    onChange={(e) => setBonusDraft((d) => ({ ...d, amount: e.target.value }))}
-                  />
-                  <div className="grid grid-cols-2 gap-2">
-                    <Select
-                      value={bonusDraft.basis}
-                      onValueChange={(v) => setBonusDraft((d) => ({ ...d, basis: v as BonusBasis }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="BRUT">{t('salaries.basisBrut')}</SelectItem>
-                        <SelectItem value="NET">{t('salaries.basisNet')}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Select
-                      value={bonusDraft.flow}
-                      onValueChange={(v) => setBonusDraft((d) => ({ ...d, flow: v as BonusFlow }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="FIXE">{t('salaries.flowFixe')}</SelectItem>
-                        <SelectItem value="VARIABLE">{t('salaries.flowVariable')}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Button type="button" variant="secondary" size="sm" onClick={() => void addBonus()}>
-                    {t('salaries.bonusAdd')}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </ScrollArea>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setPrimesDialogMonthId(null)}>
-              {t('salaries.cancel')}
-            </Button>
-            <Button type="button" onClick={() => void savePrimesIncluses()}>
-              {t('salaries.save')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={nonInclusesDialogMonthId != null}
-        onOpenChange={(open) => {
-          if (!open) setNonInclusesDialogMonthId(null)
-        }}
-      >
-        <DialogContent className="max-h-[90vh] max-w-[min(40rem,calc(100%-2rem))] overflow-hidden sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle>
-              {nonInclusesDialogRow
-                ? t('salaries.primesNonInclusesDialogTitle', {
-                    period: periodLabel(nonInclusesDialogRow.year, nonInclusesDialogRow.month, i18n.language),
-                  })
-                : t('salaries.managePrimesNonIncluses')}
-            </DialogTitle>
-            <DialogDescription>{t('salaries.primesNonInclusesDialogLead')}</DialogDescription>
-          </DialogHeader>
-          <ScrollArea className="max-h-[min(60vh,28rem)] pr-3">
-            <div className="grid gap-5 py-1">
-              <div className="space-y-3">
-                <p className="text-sm font-medium">{t('salaries.nonIncludedPrimesTitle')}</p>
-                <ul className="space-y-2 text-sm">
-                  {nonInclusesDialogLines.map((p) => (
-                    <li key={p.id} className="flex items-center justify-between gap-2 rounded-md border border-border px-3 py-2">
-                      <span>
-                        {p.category} — {p.amount}
-                        {p.description ? ` (${p.description})` : ''}
-                      </span>
-                      <Button type="button" variant="ghost" size="sm" onClick={() => void removeNonIncludedPrime(p.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </li>
-                  ))}
-                  {nonInclusesDialogLines.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">{t('salaries.noData')}</p>
-                  ) : null}
-                </ul>
-                <div className="grid gap-2">
-                  <Input
-                    placeholder={t('salaries.bonusCategory')}
-                    value={nonIncludedDraft.category}
-                    onChange={(e) => setNonIncludedDraft((d) => ({ ...d, category: e.target.value }))}
-                  />
-                  <Input
-                    placeholder={t('salaries.bonusDescription')}
-                    value={nonIncludedDraft.description}
-                    onChange={(e) => setNonIncludedDraft((d) => ({ ...d, description: e.target.value }))}
-                  />
-                  <Input
-                    placeholder={t('salaries.bonusAmount')}
-                    value={nonIncludedDraft.amount}
-                    onChange={(e) => setNonIncludedDraft((d) => ({ ...d, amount: e.target.value }))}
-                  />
-                  <Button type="button" variant="secondary" size="sm" onClick={() => void addNonIncludedPrime()}>
-                    {t('salaries.nonIncludedPrimeAdd')}
-                  </Button>
-                </div>
-              </div>
-              {nonInclusesDialogRow ? (
-                <p className="text-sm text-muted-foreground">
-                  {t('salaries.colSumNonIncluses')} :{' '}
-                  <span className="font-mono font-medium text-foreground">
-                    {formatAmount(sumNonIncluses(nonInclusesDialogRow), i18n.language)}
-                  </span>
-                </p>
-              ) : null}
-            </div>
-          </ScrollArea>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setNonInclusesDialogMonthId(null)}>
-              {t('salaries.cancel')}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
   )
+}
+
+function QueueStatusIcon({ status, warnings }: { status: QueueStatus; warnings: number }) {
+  if (status === 'extracting' || status === 'waiting') {
+    return <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" aria-hidden />
+  }
+  if (status === 'saved') return <CheckCircle2 className="h-4 w-4 shrink-0 text-green-600" aria-hidden />
+  if (status === 'error') return <X className="h-4 w-4 shrink-0 text-destructive" aria-hidden />
+  if (status === 'duplicate' || warnings > 0) {
+    return <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" aria-hidden />
+  }
+  return <CheckCircle2 className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
 }

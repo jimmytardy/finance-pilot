@@ -49,8 +49,8 @@ export async function POST(request: NextRequest) {
   const buf = await file.arrayBuffer()
 
   try {
-    const extraction = await extractPayslipFromBuffer(buf, mime)
-    return Response.json({ extraction })
+    const { draft, warnings } = await extractPayslipFromBuffer(buf, mime)
+    return Response.json({ extraction: draft, warnings })
   } catch (err) {
     if (err instanceof PayslipExtractionError) {
       if (err.code === 'not_configured') {
