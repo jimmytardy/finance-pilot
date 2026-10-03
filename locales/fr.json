@@ -289,9 +289,8 @@
       "variable": "Variable brut",
       "partageValeur": "Partage de la valeur",
       "finContrat": "Fin de contrat",
-      "evoFixe": "Évolution du fixe mensuel (%)",
       "fixeVariableTitle": "Fixe et variable",
-      "fixeVariableLead": "Brut fixe (salaire de base, ancienneté, congés…), primes variables, partage de la valeur et indemnités de fin de contrat. La courbe montre l'évolution du fixe mensuel moyen.",
+      "fixeVariableLead": "Barres : brut fixe (salaire de base, ancienneté, congés…), primes variables, partage de la valeur et indemnités de fin de contrat. Courbe : salaire de base mensuel (moyenne de l'année en vue annuelle, axe de droite).",
       "raisesTitle": "Changements du salaire de base",
       "titresRestaurant": "Titres-restaurant",
       "pas": "Prélèvement à la source",
@@ -314,7 +313,9 @@
       "kpiMoisCouverts": "Mois couverts {{year}}",
       "kpiDernierBulletin": "Dernier bulletin : {{mois}}",
       "evoMemePeriode": "Comparé à {{periode}} {{year}}",
-      "yearTableEvoNote": "* Année incomplète : évolution calculée sur la même période de l'année précédente."
+      "yearTableEvoNote": "* Année incomplète : évolution calculée sur la même période de l'année précédente.",
+      "salaireBaseMoyen": "Salaire de base mensuel moyen",
+      "salaireBase": "Salaire de base"
     },
     "invalidPayslip": "Document incomplet : brut, net avant impôt, net imposable, net payé et année doivent être renseignés, et chaque montant doit être un nombre."
   },

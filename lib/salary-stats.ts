@@ -89,6 +89,8 @@ export type YearStats = {
   fixeBrut: number
   variableBrut: number
   finContratBrut: number
+  /** Salaire de base mensuel moyen (lignes « salaire de base », mois qui en ont une). */
+  salaireBaseMoyen: number
   /** Part du variable dans (fixe + variable), en %. */
   partVariablePct: number | null
   avgFixeMensuel: number
@@ -353,6 +355,10 @@ export function computeYearStats(months: MonthStats[]): YearStats[] {
       monthsWorked,
       brut: sum((m) => m.brut),
       salaireBase: sum((m) => m.salaireBase),
+      salaireBaseMoyen: (() => {
+        const avecBase = list.filter((m) => m.salaireBase > 0)
+        return avecBase.length > 0 ? avecBase.reduce((a, m) => a + m.salaireBase, 0) / avecBase.length : 0
+      })(),
       fixeBrut,
       variableBrut,
       finContratBrut: sum((m) => m.finContratBrut),

@@ -120,7 +120,7 @@ export function SalaryRecapView() {
         variable: r0(y.variableBrut),
         partageValeur: r0(PARTAGE_VALEUR_KEYS.reduce((s, k) => s + y.partageValeur[k].brut, 0)),
         finContrat: r0(y.finContratBrut),
-        evo: y.evoFixeMensuelPct == null ? null : Math.round(y.evoFixeMensuelPct * 10) / 10,
+        salaireBase: y.salaireBaseMoyen > 0 ? r0(y.salaireBaseMoyen) : null,
       }))
     }
     return stats.months.map((m) => ({
@@ -130,7 +130,7 @@ export function SalaryRecapView() {
       variable: r0(m.variableBrut),
       partageValeur: r0(PARTAGE_VALEUR_KEYS.reduce((s, k) => s + m.partageValeur[k].brut, 0)),
       finContrat: r0(m.finContratBrut),
-      evo: null,
+      salaireBase: m.salaireBase > 0 ? r0(m.salaireBase) : null,
     }))
   }, [stats, granularity, lng])
 
@@ -141,9 +141,12 @@ export function SalaryRecapView() {
         variable: { label: t('salaries.stats.variable'), color: 'var(--chart-3)' },
         partageValeur: { label: t('salaries.stats.partageValeur'), color: 'var(--chart-4)' },
         finContrat: { label: t('salaries.stats.finContrat'), color: 'var(--chart-5)' },
-        evo: { label: t('salaries.stats.evoFixe'), color: 'var(--chart-2)' },
+        salaireBase: {
+          label: granularity === 'year' ? t('salaries.stats.salaireBaseMoyen') : t('salaries.stats.salaireBase'),
+          color: 'var(--chart-2)',
+        },
       }) satisfies ChartConfig,
-    [t],
+    [t, granularity],
   )
 
   const loading = stats === null && !error
@@ -242,13 +245,14 @@ export function SalaryRecapView() {
                   tickFormatter={(v) => money(Number(v))}
                 />
                 {granularity === 'year' ? (
+                  // Barres = totaux annuels ; courbe = montant mensuel : deux échelles en euros.
                   <YAxis
-                    yAxisId="pct"
+                    yAxisId="base"
                     orientation="right"
                     tickLine={false}
                     axisLine={false}
-                    width={48}
-                    tickFormatter={(v) => `${v} %`}
+                    width={72}
+                    tickFormatter={(v) => money(Number(v))}
                   />
                 ) : null}
                 <ChartTooltip content={<ChartTooltipContent labelFormatter={tooltipLabel} />} />
@@ -263,16 +267,15 @@ export function SalaryRecapView() {
                   fill="var(--color-finContrat)"
                   radius={[4, 4, 0, 0]}
                 />
-                {granularity === 'year' ? (
-                  <Line
-                    yAxisId="pct"
-                    type="monotone"
-                    dataKey="evo"
-                    stroke="var(--color-evo)"
-                    strokeWidth={2}
-                    connectNulls
-                  />
-                ) : null}
+                <Line
+                  yAxisId={granularity === 'year' ? 'base' : 'eur'}
+                  type="monotone"
+                  dataKey="salaireBase"
+                  stroke="var(--color-salaireBase)"
+                  strokeWidth={2}
+                  dot={granularity === 'year'}
+                  connectNulls
+                />
               </ComposedChart>
             </ChartContainer>
           )}
