@@ -1,21 +1,17 @@
 import 'server-only'
 import { getCanonicalEnv } from '@/lib/env'
 import { normalizePayslipExtraction, type PayslipWarning } from '@/lib/payslip-extraction-normalize'
+import { payslipExtractionWithDetectionSchema } from '@/lib/payslip-extraction-schema'
 import {
-  PAYSLIP_EXTRACTION_PROMPT,
-  payslipExtractionJsonSchema,
-  payslipExtractionWithDetectionSchema,
-} from '@/lib/payslip-extraction-schema'
+  buildPayslipOcrRequestBody,
+  MISTRAL_OCR_URL,
+  parseDocumentAnnotation,
+  PAYSLIP_OCR_MODEL,
+  type PayslipMime,
+} from '@/lib/payslip-extraction-request'
 import type { PayslipDraft } from '@/lib/payslip-types'
 
-const OCR_MODEL = 'mistral-ocr-latest'
-const MISTRAL_OCR_URL = 'https://api.mistral.ai/v1/ocr'
-
-export type PayslipMime =
-  | 'application/pdf'
-  | 'image/jpeg'
-  | 'image/png'
-  | 'image/webp'
+export type { PayslipMime }
 
 export class PayslipExtractionError extends Error {
   constructor(
@@ -31,29 +27,6 @@ export class PayslipExtractionError extends Error {
   }
 }
 
-function buildDocumentPayload(mime: PayslipMime, base64: string): Record<string, string> {
-  if (mime === 'application/pdf') {
-    return {
-      type: 'document_url',
-      document_url: `data:application/pdf;base64,${base64}`,
-    }
-  }
-  return {
-    type: 'image_url',
-    image_url: `data:${mime};base64,${base64}`,
-  }
-}
-
-function parseDocumentAnnotation(raw: unknown): unknown {
-  if (raw == null) return null
-  if (typeof raw === 'string') {
-    const t = raw.trim()
-    if (!t) return null
-    return JSON.parse(t) as unknown
-  }
-  return raw
-}
-
 type MistralOcrResponse = {
   document_annotation?: unknown
 }
@@ -66,7 +39,6 @@ export async function extractPayslipFromBuffer(
   if (!apiKey) throw new PayslipExtractionError('not_configured')
 
   const base64 = Buffer.from(buffer).toString('base64')
-  const document = buildDocumentPayload(mime, base64)
 
   let response: Response
   try {
@@ -76,19 +48,7 @@ export async function extractPayslipFromBuffer(
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model: OCR_MODEL,
-        document,
-        document_annotation_format: {
-          type: 'json_schema',
-          json_schema: {
-            name: 'payslip_detailed_extraction',
-            strict: true,
-            schema: payslipExtractionJsonSchema,
-          },
-        },
-        document_annotation_prompt: PAYSLIP_EXTRACTION_PROMPT,
-      }),
+      body: JSON.stringify(buildPayslipOcrRequestBody(mime, base64)),
     })
   } catch (err) {
     console.error('[payslip-extract] fetch error:', err instanceof Error ? err.message : 'unknown')
@@ -124,5 +84,5 @@ export async function extractPayslipFromBuffer(
     throw new PayslipExtractionError('not_a_payslip')
   }
 
-  return normalizePayslipExtraction(validated.data, OCR_MODEL)
+  return normalizePayslipExtraction(validated.data, PAYSLIP_OCR_MODEL)
 }

@@ -155,42 +155,53 @@ function categoriesList(): string {
   return [...byBloc.entries()].map(([bloc, ids]) => `- ${bloc} : ${ids.join(', ')}`).join('\n')
 }
 
-export const PAYSLIP_EXTRACTION_PROMPT = `Tu extrais TOUTES les lignes d'un bulletin de salaire français (tous logiciels de paie) ou d'une fiche distincte d'épargne salariale.
+export const PAYSLIP_EXTRACTION_PROMPT = `Tu extrais TOUTES les lignes d'un bulletin de salaire français (tous logiciels de paie : Sage, Silae, PayFit, etc.) ou d'une fiche distincte d'épargne salariale.
 
-Règle d'or : recopie les montants imprimés. Ne calcule jamais un total en additionnant des lignes ; ne fusionne jamais deux lignes.
+Règle d'or : recopie les montants imprimés. Ne calcule jamais un total en additionnant des lignes ; ne fusionne jamais deux lignes ; n'invente aucun montant.
 
 ## Détection
 - isPayslip = true pour un bulletin de paie ou un relevé d'intéressement / participation / abondement ; sinon false, montants "0.00" et lines = [].
-- kind = EPARGNE_SALARIALE pour une fiche distincte d'intéressement ou de participation (pas de salaire de base) ; sinon BULLETIN.
-- year / month : période de paie (« Période du … au … »), pas la date de paiement.
+- kind = EPARGNE_SALARIALE pour une fiche distincte d'intéressement ou de participation (sans salaire de base) ; sinon BULLETIN.
+- year / month : période de paie (« Période : Mars 2026 », « Du 01/09/2021 au 30/09/2021 »), pas la date de paiement. Pour une fiche d'épargne salariale : mois de la date de versement.
 
 ## Totaux (recopiés depuis leur libellé)
-- brut : ligne « Salaire brut » / « Total brut ». Pas « Salaire de base » seul.
-- netAvantImpot : « Net à payer avant impôt sur le revenu ».
+- brut : « Salaire brut » / « Rémunération brute » / « Total brut ». Pas « Salaire de base » seul.
+- netAvantImpot : « Net à payer avant impôt sur le revenu ». S'il n'est pas imprimé (anciens bulletins), mets netPaye + prelevementSource.
 - netImposable : « Net imposable » du mois (ou base de la ligne PAS). Pas le cumul annuel.
-- netSocial : « Montant net social ».
-- netPaye : « Net payé » / « Net à payer » final (après PAS et ajustements). Hors valeur des titres-restaurant.
-- prelevementSource : montant retenu sur la ligne « Impôt sur le revenu prélevé à la source », positif ; tauxPas : son taux en %.
-- totalCotisationsSalariales / totalCotisationsPatronales : ligne « Total des cotisations et contributions ».
-- coutEmployeur : « Total versé par l'employeur » / « Coût global ».
-- cumuls : colonnes « Cumul annuel » / « Année » du bandeau si présentes.
+- netSocial : « Montant net social », sinon null.
+- netPaye : « Net payé » / « Net à payer » final, versé sur le compte (après PAS). Hors valeur des titres-restaurant.
+- prelevementSource : montant retenu sur la ligne « Impôt sur le revenu prélevé à la source » / « PAS », positif ; tauxPas : son taux en %, tel qu'imprimé (ex. 5.30, pas 0.053).
+- totalCotisationsSalariales / totalCotisationsPatronales : ligne « Total des cotisations et contributions » (ou « Total retenues »), valeurs positives.
+- coutEmployeur : « Coût global » ou « Total versé par l'employeur », sinon null.
+- cumuls : colonnes « Cumul » / « Annuel » / « Depuis janvier » si présentes.
+- Fiche d'épargne salariale : brut = montant brut total, netAvantImpot = netPaye = montant net après CSG/CRDS, netImposable = montant imposable s'il est indiqué sinon "0.00", prelevementSource = "0.00".
 
-## Lignes (lines) — une entrée par libellé imprimé, dans l'ordre
+## Lignes (lines) — une entrée par élément de paie imprimé, dans l'ordre
 Catégories autorisées par bloc :
 ${categoriesList()}
 
-Conventions de montants :
-- REMUNERATION, FIN_CONTRAT, PARTAGE_VALEUR : montant = gain (négatif pour une absence / retenue sur brut). base, quantite (heures, jours) et taux si imprimés.
-- COTISATION : base, tauxSalarial, montantSalarial (colonne « À déduire » / part salarié), tauxPatronal, montantPatronal (part employeur). Montants positifs ; les exonérations / réductions (réduction générale, réduction salariale heures sup) sont négatives.
-- IMPOT : categorie prelevement_source, base = net imposable, tauxSalarial = taux, montantSalarial = montant retenu positif.
-- AJUSTEMENT_NET : montant signé (+ ajouté au net, − retenu). Titres-restaurant : quantite = nombre de titres, montantSalarial = part salarié, montantPatronal = part employeur, montant = −part salarié.
+Où mettre les montants (quel que soit le nom des colonnes du logiciel) :
+- Un libellé de la forme « Mutuelle | Forfait » ou « Prévoyance | Tranche A » est UNE seule ligne : la partie après « | » est une précision (base forfaitaire, tranche), jamais une ligne à part.
+- Un taux est un pourcentage ou un taux horaire imprimé dans la colonne Taux ; un montant en euros n'est jamais un taux.
+- Les commentaires imprimés sous une ligne (« (1.00 JOUR DE CONGES PAYES PRIS) ») ne font pas partie de son libellé.
+- REMUNERATION, FIN_CONTRAT, PARTAGE_VALEUR : le montant va TOUJOURS dans « montant », jamais dans montantSalarial. Gain positif ; retenue sur brut négative (congés payés pris, absence). base, quantite (heures, jours) et taux si imprimés.
+- COTISATION : base, tauxSalarial, montantSalarial (part salarié / « À déduire »), tauxPatronal, montantPatronal (part employeur / « Charges patronales »). Valeurs POSITIVES même si le bulletin les imprime en négatif. Remplis chaque part uniquement si sa propre colonne contient un montant : ne recopie jamais la part employeur dans la part salarié. Une ligne peut avoir les deux parts même sans taux (ex. « Mutuelle | Forfait 48,92 48,93 » → salarié 48.92, employeur 48.93). Seules les exonérations / réductions (réduction générale, exonération de cotisations) sont négatives.
+- IMPOT : categorie prelevement_source, base = net imposable, tauxSalarial = taux en %, montantSalarial = montant retenu positif.
+- AJUSTEMENT_NET : « montant » signé (+ ajouté au net : frais, transport, télétravail, IJSS ; − retenu : acompte, saisie). Titres-restaurant : quantite = nombre de titres, montantSalarial = part salarié, montantPatronal = part employeur.
 
 Règles de rangement :
-- Lignes avant « Salaire brut » : REMUNERATION (salaire_base, heures_sup, primes, conges_payes, absence…). Prime d'objectifs / bonus / commissions → prime_objectifs ; 13e mois / fin d'année / vacances → prime_annuelle.
-- Prime de partage de la valeur (PPV, ex-PEPA) → PARTAGE_VALEUR / prime_partage_valeur, même si elle est versée après les cotisations. Intéressement, participation, abondement → leurs catégories PARTAGE_VALEUR ; csgCrds = CSG/CRDS retenue sur ce montant ; modeEpargne = PLACE si placé sur PEE/PER, PERCU si versé, INCONNU sinon.
-- Cotisations par risque : Sécurité sociale maladie → sante ; complémentaire santé / mutuelle → mutuelle ; prévoyance → prevoyance ; accidents du travail → atmp ; vieillesse plafonnée / déplafonnée → retraite_base ; Agirc-Arrco T1/T2, CEG, CET, APEC → retraite_complementaire ; allocations familiales → famille ; chômage, AGS → chomage ; CSG déductible → csg_deductible ; CSG non déductible + CRDS → csg_crds_non_deductible ; FNAL, CSA, versement mobilité, formation, apprentissage, forfait social, dialogue social → autres_contributions ; allègements / réduction générale → exoneration.
-- Après le net : indemnité kilométrique, IK vélo, frais professionnels, télétravail → frais_pro ; remboursement transport, Navigo, forfait mobilités durables, DFS transport → transport ; IJSS → ijss ; acompte → acompte ; versement PEE/PER volontaire → versement_volontaire_pee.
-- Ignore les lignes de sous-totaux (« Total des cotisations », « Salaire brut », « Net à payer ») : elles vont dans les totaux, pas dans lines.
+- Avant le brut : REMUNERATION (salaire_base, heures_sup, conges_payes pour congés pris et indemnité de congés, absence, prime_objectifs pour prime d'objectifs / bonus / commissions, prime_annuelle pour 13e mois / vacances, prime_exceptionnelle).
+- Fin de contrat : indemnité compensatrice de congés payés → FIN_CONTRAT / indemnite_conges ; préavis → indemnite_preavis ; précarité → indemnite_precarite ; licenciement / rupture conventionnelle → indemnite_rupture ; autre indemnité compensatrice (RTT…) → FIN_CONTRAT / autre.
+- Partage de la valeur : prime de partage de la valeur (PPV) et prime exceptionnelle de pouvoir d'achat (PEPA) → prime_partage_valeur, même si versée après les cotisations. Intéressement, participation, abondement → leurs catégories ; csgCrds = CSG/CRDS sur ce montant si indiquée ; modeEpargne = PLACE si placé sur PEE/PER, PERCU si versé, INCONNU sinon.
+- Versé hors bulletin : une ligne « … versé brut hors bulletin » (+) va en PARTAGE_VALEUR (montant brut) ; sa contrepartie « … versé net hors bulletin » (−) va en AJUSTEMENT_NET / verse_hors_bulletin avec montant négatif.
+- Acompte déjà versé (ex. « Acompte du 11/02 ») → AJUSTEMENT_NET / acompte, montant négatif.
+- Cotisations par risque : Sécurité sociale maladie → sante ; complémentaire santé / mutuelle → mutuelle ; prévoyance / incapacité-invalidité-décès → prevoyance ; accidents du travail → atmp ; vieillesse plafonnée / déplafonnée → retraite_base ; Agirc-Arrco T1/T2, CEG, CET, APEC → retraite_complementaire ; allocations familiales → famille ; chômage / Pôle emploi, AGS → chomage ; CSG déductible → csg_deductible ; CSG non déductible + CRDS → csg_crds_non_deductible ; FNAL / aide au logement, CSA / solidarité autonomie, versement mobilité, formation, apprentissage, forfait social, dialogue social, « autres contributions dues par l'employeur » → autres_contributions ; convention collective (ADESATT…) → conventionnelle ; allègements / exonérations → exoneration.
+- Après le net : indemnité kilométrique, IK vélo, frais professionnels, télétravail → frais_pro ; remboursement transport, Navigo, frais de transport public, forfait mobilités durables, indemnité de transport DFS → transport ; IJSS → ijss ; versement PEE/PER volontaire → versement_volontaire_pee.
+
+À NE PAS mettre dans lines :
+- les sous-totaux et totaux (« Salaire brut », « Rémunération brute », « Total des cotisations », « Indemnités non soumises », « Total dû », « Net imposable », « Net à payer », « Net payé ») : ils vont dans les totaux ;
+- les lignes d'information sans incidence sur le net : « Montant net social », « Réintégration fiscale », « Cumul PAS annuel », « Transfert CSG … prestataire », « dont évolution de la rémunération … », « Total intéressement », « Journée de solidarité », commentaires sans montant (« 2 jours de RTT les 24 et 31 déc ») ;
+- les numéros de renvoi entourés (①, ②, « 1 », « 4 » placés devant un total) ne font pas partie des montants : « TOTAL COTISATIONS SALARIALES ④ 683,96 » vaut 683.96.
 
 ## Format
 - Montants : chaînes avec point décimal (3575.00), sans espace ni symbole €. Champ absent → null (totaux obligatoires absents → "0.00").

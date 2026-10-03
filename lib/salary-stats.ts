@@ -3,10 +3,12 @@
  * côté serveur comme côté client).
  *
  * « Net en poche » d'un mois, sans double comptage :
- * - net payé du bulletin (il contient déjà les primes et la PPV versées sur ce bulletin) ;
+ * - argent encaissé via le bulletin : net payé + acomptes déjà versés + sommes versées hors bulletin
+ *   (gestionnaire d'épargne salariale) — ces deux dernières sont retenues du net payé mais bien perçues ;
  * - + valeur des titres-restaurant (part salariale + patronale : la part salariale a été retenue du net) ;
- * - + partage de la valeur hors net payé : fiches d'épargne salariale et lignes placées sur un plan,
- *   nettes de CSG/CRDS.
+ * - + partage de la valeur placé sur un plan, et fiches d'épargne salariale, nets de CSG/CRDS.
+ * Le partage de la valeur perçu en argent est déjà dans l'argent encaissé : il en est seulement isolé
+ * pour la répartition « salaire / partage de la valeur ».
  * La variante « avant impôt » ajoute le prélèvement à la source.
  */
 import { categoryRole } from '@/lib/payslip-categories'
@@ -191,7 +193,10 @@ function applyBulletin(m: MonthStats, p: PayslipDto) {
   let hasCotisationLines = false
   let cotSal = 0
   let cotPat = 0
-  let pvDansNetPaye = 0
+  let pvPercuNet = 0
+  let pvPlaceNet = 0
+  let acomptes = 0
+  let horsBulletin = 0
 
   for (const l of p.lines) {
     switch (l.bloc) {
@@ -214,10 +219,10 @@ function applyBulletin(m: MonthStats, p: PayslipDto) {
         pv.net += net
         if (isPlaced(l)) {
           pv.place += net
-          m.partageValeurPlaceNet += net
+          pvPlaceNet += net
         } else {
           pv.percu += net
-          pvDansNetPaye += net
+          pvPercuNet += net
         }
         break
       }
@@ -236,6 +241,10 @@ function applyBulletin(m: MonthStats, p: PayslipDto) {
         if (l.categorie === 'titres_restaurant') {
           m.titresRestaurant += Math.abs(num(l.montantSalarial)) + Math.abs(num(l.montantPatronal))
           m.titresRestaurantCount += num(l.quantite)
+        } else if (l.categorie === 'acompte') {
+          acomptes += Math.abs(num(l.montant))
+        } else if (l.categorie === 'verse_hors_bulletin') {
+          horsBulletin += Math.abs(num(l.montant))
         }
         break
       }
@@ -251,8 +260,13 @@ function applyBulletin(m: MonthStats, p: PayslipDto) {
   m.cotisationsPatronales += hasCotisationLines ? cotPat : num(p.totalCotisationsPatronales)
   if (p.coutEmployeur != null) m.coutEmployeur = (m.coutEmployeur ?? 0) + num(p.coutEmployeur)
 
-  m.partageValeurPercuNet += pvDansNetPaye
-  m.netSalaire += num(p.netPaye) - pvDansNetPaye
+  // Argent encaissé via ce bulletin, dont le partage de la valeur perçu en argent. La part placée qui
+  // transite par une ligne « versé hors bulletin » n'est pas de l'argent encaissé.
+  const encaisse = num(p.netPaye) + acomptes + horsBulletin
+  const placeViaHorsBulletin = Math.min(horsBulletin, pvPlaceNet)
+  m.partageValeurPercuNet += pvPercuNet
+  m.partageValeurPlaceNet += pvPlaceNet
+  m.netSalaire += encaisse - pvPercuNet - placeViaHorsBulletin
 }
 
 function applyEpargneSalariale(m: MonthStats, p: PayslipDto) {

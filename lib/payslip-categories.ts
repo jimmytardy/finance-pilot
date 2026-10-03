@@ -9,6 +9,8 @@
  * - IMPOT : `montantSalarial` = prélèvement positif, `base` = net imposable, `tauxSalarial` = taux PAS.
  * - AJUSTEMENT_NET : `montant` signé (+ ajouté au net, − retenu). Titres-restaurant : part salariale
  *   en `montantSalarial`, part patronale en `montantPatronal`, nombre de titres en `quantite`.
+ *   `acompte` et `verse_hors_bulletin` (négatifs) : sommes déjà perçues ailleurs (acompte, gestionnaire
+ *   d'épargne salariale), retirées du net payé mais bien encaissées.
  */
 
 export const PAYSLIP_KINDS = ['BULLETIN', 'EPARGNE_SALARIALE'] as const
@@ -123,6 +125,7 @@ export const PAYSLIP_CATEGORIES: readonly PayslipCategory[] = [
   cat('AJUSTEMENT_NET', 'frais_pro', null, { regimeSocial: 'EXONERE', imposable: false }),
   cat('AJUSTEMENT_NET', 'ijss', null),
   cat('AJUSTEMENT_NET', 'acompte', null),
+  cat('AJUSTEMENT_NET', 'verse_hors_bulletin', null),
   cat('AJUSTEMENT_NET', 'saisie', null),
   cat('AJUSTEMENT_NET', 'versement_volontaire_pee', null),
   cat('AJUSTEMENT_NET', 'reprise_avantage_nature', null),

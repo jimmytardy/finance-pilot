@@ -272,6 +272,7 @@
       "frais_pro": "Business expenses",
       "ijss": "Social security sick pay",
       "acompte": "Advance",
+      "verse_hors_bulletin": "Paid outside payslip",
       "saisie": "Wage garnishment",
       "versement_volontaire_pee": "Voluntary PEE/PER payment",
       "reprise_avantage_nature": "Benefit in kind deduction",
