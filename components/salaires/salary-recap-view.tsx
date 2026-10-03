@@ -120,7 +120,8 @@ export function SalaryRecapView() {
         variable: r0(y.variableBrut),
         partageValeur: r0(PARTAGE_VALEUR_KEYS.reduce((s, k) => s + y.partageValeur[k].brut, 0)),
         finContrat: r0(y.finContratBrut),
-        salaireBase: y.salaireBaseMoyen > 0 ? r0(y.salaireBaseMoyen) : null,
+        // Annualisé pour être comparable aux barres (totaux annuels), sur le même axe.
+        salaireBase: y.salaireBaseMoyen > 0 ? r0(y.salaireBaseMoyen * 12) : null,
       }))
     }
     return stats.months.map((m) => ({
@@ -244,17 +245,6 @@ export function SalaryRecapView() {
                   width={72}
                   tickFormatter={(v) => money(Number(v))}
                 />
-                {granularity === 'year' ? (
-                  // Barres = totaux annuels ; courbe = montant mensuel : deux échelles en euros.
-                  <YAxis
-                    yAxisId="base"
-                    orientation="right"
-                    tickLine={false}
-                    axisLine={false}
-                    width={72}
-                    tickFormatter={(v) => money(Number(v))}
-                  />
-                ) : null}
                 <ChartTooltip content={<ChartTooltipContent labelFormatter={tooltipLabel} />} />
                 <ChartLegend content={<ChartLegendContent />} />
                 <Bar yAxisId="eur" dataKey="fixe" stackId="brut" fill="var(--color-fixe)" />
@@ -268,7 +258,7 @@ export function SalaryRecapView() {
                   radius={[4, 4, 0, 0]}
                 />
                 <Line
-                  yAxisId={granularity === 'year' ? 'base' : 'eur'}
+                  yAxisId="eur"
                   type="monotone"
                   dataKey="salaireBase"
                   stroke="var(--color-salaireBase)"

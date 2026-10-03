@@ -290,7 +290,7 @@
       "partageValeur": "Profit sharing",
       "finContrat": "End of contract",
       "fixeVariableTitle": "Fixed and variable pay",
-      "fixeVariableLead": "Bars: fixed gross (base salary, seniority, leave…), variable bonuses, profit sharing and end-of-contract payments. Line: monthly base salary (yearly average in the yearly view, right axis).",
+      "fixeVariableLead": "Bars: fixed gross (base salary, seniority, leave…), variable bonuses, profit sharing and end-of-contract payments. Line: base salary (monthly average × 12 in the yearly view, monthly amount in the monthly view).",
       "raisesTitle": "Base salary changes",
       "titresRestaurant": "Meal vouchers",
       "pas": "Income tax withheld",
@@ -314,7 +314,7 @@
       "kpiDernierBulletin": "Latest payslip: {{mois}}",
       "evoMemePeriode": "Compared with {{periode}} {{year}}",
       "yearTableEvoNote": "* Incomplete year: change computed over the same period of the previous year.",
-      "salaireBaseMoyen": "Average monthly base salary",
+      "salaireBaseMoyen": "Annualised base salary (average × 12)",
       "salaireBase": "Base salary"
     },
     "invalidPayslip": "Incomplete document: gross, net before tax, taxable net, net paid and year are required, and every amount must be a number."
