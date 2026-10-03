@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Area, AreaChart, Bar, CartesianGrid, ComposedChart, Line, XAxis, YAxis } from 'recharts'
+import { Bar, CartesianGrid, ComposedChart, Line, XAxis, YAxis } from 'recharts'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
@@ -23,12 +23,11 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { formatCurrencyAmount } from '@/lib/i18n/locale'
-import { formatYearMonthLabel, formatYearMonthShort } from '@/lib/salary-month-label'
+import { formatMonthLongName, formatYearMonthLabel, formatYearMonthShort } from '@/lib/salary-month-label'
 import { PARTAGE_VALEUR_KEYS, type SalaryStats, type YearStats } from '@/lib/salary-stats'
 import { fetchOpts, formatPct } from '@/components/salaires/payslip-format'
 
 type Granularity = 'year' | 'month'
-type TaxMode = 'apres' | 'avant'
 
 /** Infobulle : libellé complet du point survolé (l'axe affiche une forme courte). */
 function tooltipLabel(_: unknown, payload: ReadonlyArray<{ payload?: { label?: string } }> | undefined) {
@@ -84,7 +83,6 @@ export function SalaryRecapView() {
   const [stats, setStats] = useState<SalaryStats | null>(null)
   const [error, setError] = useState(false)
   const [granularity, setGranularity] = useState<Granularity>('year')
-  const [taxMode, setTaxMode] = useState<TaxMode>('apres')
 
   const load = useCallback(async () => {
     try {
@@ -102,6 +100,15 @@ export function SalaryRecapView() {
 
   const years = stats?.years ?? []
   const last: YearStats | undefined = years[years.length - 1]
+
+  /** « janv.–sept. » : période de janvier au mois donné. */
+  const periodeLabel = useCallback(
+    (mois: number) => {
+      const short = (m: number) => new Date(2000, m - 1, 1).toLocaleDateString(lng, { month: 'short' })
+      return mois === 1 ? short(1) : `${short(1)}–${short(mois)}`
+    },
+    [lng],
+  )
 
   const fixeVariableData = useMemo(() => {
     if (!stats) return []
@@ -127,20 +134,6 @@ export function SalaryRecapView() {
     }))
   }, [stats, granularity, lng])
 
-  const cumulData = useMemo(
-    () =>
-      (stats?.cumul ?? []).map((c) => ({
-        x: formatYearMonthShort(c.key, lng),
-        label: formatYearMonthLabel(c.key, lng),
-        netSalaire: r0(c.netSalaire),
-        titresRestaurant: r0(c.titresRestaurant),
-        partageValeurPercu: r0(c.partageValeurPercu),
-        partageValeurPlace: r0(c.partageValeurPlace),
-        pas: taxMode === 'avant' ? r0(c.pas) : 0,
-      })),
-    [stats, taxMode, lng],
-  )
-
   const fixeVariableConfig = useMemo(
     () =>
       ({
@@ -153,21 +146,8 @@ export function SalaryRecapView() {
     [t],
   )
 
-  const cumulConfig = useMemo(
-    () =>
-      ({
-        netSalaire: { label: t('salaries.stats.netSalaire'), color: 'var(--chart-1)' },
-        titresRestaurant: { label: t('salaries.stats.titresRestaurant'), color: 'var(--chart-3)' },
-        partageValeurPercu: { label: t('salaries.stats.partageValeurPercu'), color: 'var(--chart-4)' },
-        partageValeurPlace: { label: t('salaries.stats.partageValeurPlace'), color: 'var(--chart-5)' },
-        pas: { label: t('salaries.stats.pas'), color: 'var(--chart-2)' },
-      }) satisfies ChartConfig,
-    [t],
-  )
-
   const loading = stats === null && !error
   const empty = stats !== null && stats.months.length === 0
-  const xBusy = cumulData.length > 14
 
   const placeholder = (h: string) =>
     loading ? (
@@ -188,14 +168,26 @@ export function SalaryRecapView() {
       {last ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Kpi
-            label={t('salaries.stats.kpiNetEnPoche', { year: last.year })}
+            label={
+              last.comparaisonJusquAuMois
+                ? t('salaries.stats.kpiNetEnPochePeriode', { year: last.year, periode: periodeLabel(last.comparaisonJusquAuMois) })
+                : t('salaries.stats.kpiNetEnPoche', { year: last.year })
+            }
             value={money(last.netEnPocheApresImpot)}
-            hint={t('salaries.stats.kpiEvo', { pct: formatPct(last.evoNetEnPochePct, lng) })}
+            hint={
+              last.comparaisonJusquAuMois
+                ? t('salaries.stats.kpiEvoPeriode', {
+                    pct: formatPct(last.evoNetEnPochePct, lng),
+                    periode: periodeLabel(last.comparaisonJusquAuMois),
+                    year: last.year - 1,
+                  })
+                : t('salaries.stats.kpiEvo', { pct: formatPct(last.evoNetEnPochePct, lng) })
+            }
           />
           <Kpi
-            label={t('salaries.stats.kpiCumul')}
-            value={money(last.cumulNetEnPocheApresImpot)}
-            hint={t('salaries.stats.kpiCumulAvant', { amount: money(last.cumulNetEnPocheAvantImpot) })}
+            label={t('salaries.stats.kpiMoisCouverts', { year: last.year })}
+            value={`${last.monthsWorked}/12`}
+            hint={t('salaries.stats.kpiDernierBulletin', { mois: formatMonthLongName(last.dernierMois, lng) })}
           />
           <Kpi
             label={t('salaries.stats.kpiFixeMensuel', { year: last.year })}
@@ -287,7 +279,7 @@ export function SalaryRecapView() {
           {stats && stats.raises.length > 0 ? (
             <div className="mt-4">
               <h3 className="mb-1 text-sm font-semibold">{t('salaries.stats.raisesTitle')}</h3>
-              <ul className="grid gap-1 text-sm sm:grid-cols-2">
+              <ul className="grid max-w-xl gap-1 text-sm">
                 {stats.raises.map((r) => (
                   <li key={r.key} className="flex justify-between rounded-md bg-muted/30 px-3 py-1.5">
                     <span>{formatYearMonthLabel(r.key, lng)}</span>
@@ -302,69 +294,6 @@ export function SalaryRecapView() {
               </ul>
             </div>
           ) : null}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="space-y-3">
-          <div>
-            <CardTitle className="text-lg">{t('salaries.stats.cumulTitle')}</CardTitle>
-            <CardDescription>{t('salaries.stats.cumulLead')}</CardDescription>
-          </div>
-          <SegmentedToggle
-            value={taxMode}
-            onChange={setTaxMode}
-            options={[
-              { value: 'apres', label: t('salaries.stats.apresImpot') },
-              { value: 'avant', label: t('salaries.stats.avantImpot') },
-            ]}
-          />
-        </CardHeader>
-        <CardContent>
-          {loading || error || empty ? (
-            placeholder('h-[min(24rem,50vh)]')
-          ) : (
-            <ChartContainer config={cumulConfig} className="h-[min(24rem,50vh)] w-full">
-              <AreaChart data={cumulData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="x"
-                  tickLine={false}
-                  axisLine={false}
-                  interval={0}
-                  angle={xBusy ? -60 : 0}
-                  textAnchor={xBusy ? 'end' : 'middle'}
-                  height={xBusy ? 56 : 32}
-                  tick={{ fontSize: 11 }}
-                />
-                <YAxis tickLine={false} axisLine={false} width={80} tickFormatter={(v) => money(Number(v))} />
-                <ChartTooltip content={<ChartTooltipContent labelFormatter={tooltipLabel} />} />
-                <ChartLegend content={<ChartLegendContent />} />
-                {(['netSalaire', 'titresRestaurant', 'partageValeurPercu', 'partageValeurPlace'] as const).map((k) => (
-                  <Area
-                    key={k}
-                    type="monotone"
-                    dataKey={k}
-                    stackId="poche"
-                    stroke={`var(--color-${k})`}
-                    fill={`var(--color-${k})`}
-                    fillOpacity={0.35}
-                  />
-                ))}
-                {taxMode === 'avant' ? (
-                  <Area
-                    type="monotone"
-                    dataKey="pas"
-                    stackId="poche"
-                    stroke="var(--color-pas)"
-                    fill="var(--color-pas)"
-                    fillOpacity={0.2}
-                    strokeDasharray="4 3"
-                  />
-                ) : null}
-              </AreaChart>
-            </ChartContainer>
-          )}
         </CardContent>
       </Card>
 
@@ -423,7 +352,12 @@ export function SalaryRecapView() {
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">{t('salaries.stats.yearTableTitle')}</CardTitle>
-          <CardDescription>{t('salaries.stats.yearTableLead')}</CardDescription>
+          <CardDescription>
+            {t('salaries.stats.yearTableLead')}
+            {years.some((y) => y.comparaisonJusquAuMois && y.evoNetEnPochePct != null)
+              ? ` ${t('salaries.stats.yearTableEvoNote')}`
+              : ''}
+          </CardDescription>
         </CardHeader>
         <CardContent className="overflow-x-auto">
           {loading || error || empty ? (
@@ -449,7 +383,7 @@ export function SalaryRecapView() {
                 {years.map((y) => (
                   <TableRow key={y.year}>
                     <TableCell className="font-medium">{y.year}</TableCell>
-                    <TableCell className="text-right tabular-nums">{y.monthsWorked}</TableCell>
+                    <TableCell className="text-right tabular-nums">{y.monthsWorked}/12</TableCell>
                     <TableCell className="text-right tabular-nums">{money(y.fixeBrut)}</TableCell>
                     <TableCell className="text-right tabular-nums">{money(y.variableBrut)}</TableCell>
                     <TableCell className="text-right tabular-nums">
@@ -459,7 +393,17 @@ export function SalaryRecapView() {
                     <TableCell className="text-right tabular-nums">{money(y.netPaye)}</TableCell>
                     <TableCell className="text-right tabular-nums">{money(y.titresRestaurant)}</TableCell>
                     <TableCell className="text-right font-medium tabular-nums">{money(y.netEnPocheApresImpot)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{formatPct(y.evoNetEnPochePct, lng)}</TableCell>
+                    <TableCell
+                      className="text-right tabular-nums"
+                      title={
+                        y.comparaisonJusquAuMois
+                          ? t('salaries.stats.evoMemePeriode', { periode: periodeLabel(y.comparaisonJusquAuMois), year: y.year - 1 })
+                          : undefined
+                      }
+                    >
+                      {formatPct(y.evoNetEnPochePct, lng)}
+                      {y.comparaisonJusquAuMois && y.evoNetEnPochePct != null ? '*' : ''}
+                    </TableCell>
                     <TableCell className="text-right tabular-nums">{y.coutEmployeur > 0 ? money(y.coutEmployeur) : '—'}</TableCell>
                   </TableRow>
                 ))}

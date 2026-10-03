@@ -20,10 +20,6 @@ function num(v: string | null | undefined): number {
   return Number.isFinite(n) ? n : 0
 }
 
-function round2(n: number): number {
-  return Math.round(n * 100) / 100
-}
-
 export const PARTAGE_VALEUR_KEYS = ['prime_partage_valeur', 'interessement', 'participation', 'abondement', 'autre'] as const
 export type PartageValeurKey = (typeof PARTAGE_VALEUR_KEYS)[number]
 
@@ -111,24 +107,17 @@ export type YearStats = {
   partageValeurPlaceNet: number
   netEnPocheApresImpot: number
   netEnPocheAvantImpot: number
-  /** Évolutions vs année précédente, en %. */
+  /** Dernier mois couvert par un bulletin (1-12). */
+  dernierMois: number
+  /**
+   * Année incomplète (dernier bulletin avant décembre) : les évolutions sont calculées sur la même
+   * période de l'année précédente (janvier → `dernierMois`). Null pour une année complète.
+   */
+  comparaisonJusquAuMois: number | null
+  /** Évolutions vs année précédente (même période si l'année est incomplète), en %. */
   evoFixeMensuelPct: number | null
   evoVariablePct: number | null
   evoNetEnPochePct: number | null
-  /** Cumul depuis le premier document. */
-  cumulNetEnPocheApresImpot: number
-  cumulNetEnPocheAvantImpot: number
-}
-
-export type CumulPoint = {
-  key: string
-  netSalaire: number
-  titresRestaurant: number
-  partageValeurPercu: number
-  partageValeurPlace: number
-  pas: number
-  totalApresImpot: number
-  totalAvantImpot: number
 }
 
 export type SalaryRaise = { key: string; from: number; to: number; pct: number }
@@ -136,7 +125,6 @@ export type SalaryRaise = { key: string; from: number; to: number; pct: number }
 export type SalaryStats = {
   months: MonthStats[]
   years: YearStats[]
-  cumul: CumulPoint[]
   raises: SalaryRaise[]
 }
 
@@ -328,8 +316,6 @@ export function computeYearStats(months: MonthStats[]): YearStats[] {
   }
 
   const out: YearStats[] = []
-  let cumulApres = 0
-  let cumulAvant = 0
   for (const year of [...byYear.keys()].sort((a, b) => a - b)) {
     const list = byYear.get(year) ?? []
     const sum = (pick: (m: MonthStats) => number) => list.reduce((s, m) => s + pick(m), 0)
@@ -340,8 +326,6 @@ export function computeYearStats(months: MonthStats[]): YearStats[] {
     const pas = sum((m) => m.pas)
     const netEnPocheApresImpot = sum((m) => m.netEnPocheApresImpot)
     const netEnPocheAvantImpot = sum((m) => m.netEnPocheAvantImpot)
-    cumulApres += netEnPocheApresImpot
-    cumulAvant += netEnPocheAvantImpot
 
     const partageValeur = emptyPvMap()
     for (const m of list) {
@@ -358,6 +342,12 @@ export function computeYearStats(months: MonthStats[]): YearStats[] {
 
     const avgFixeMensuel = monthsWorked > 0 ? fixeBrut / monthsWorked : 0
     const prev = out[out.length - 1]
+    const dernierMois = Math.max(...list.filter((m) => m.hasBulletin).map((m) => m.month), 0)
+    const comparaisonJusquAuMois = dernierMois > 0 && dernierMois < 12 ? dernierMois : null
+    // Année précédente restreinte à la même période (janvier → dernier mois de l'année en cours).
+    const prevSamePeriod = (byYear.get(year - 1) ?? []).filter((m) => m.month <= (comparaisonJusquAuMois ?? 12))
+    const prevSum = (pick: (m: MonthStats) => number) =>
+      prevSamePeriod.length > 0 ? prevSamePeriod.reduce((s, m) => s + pick(m), 0) : null
     out.push({
       year,
       monthsWorked,
@@ -383,36 +373,13 @@ export function computeYearStats(months: MonthStats[]): YearStats[] {
       netEnPocheApresImpot,
       netEnPocheAvantImpot,
       evoFixeMensuelPct: pct(avgFixeMensuel, prev?.avgFixeMensuel),
-      evoVariablePct: pct(variableBrut, prev?.variableBrut),
-      evoNetEnPochePct: pct(netEnPocheApresImpot, prev?.netEnPocheApresImpot),
-      cumulNetEnPocheApresImpot: cumulApres,
-      cumulNetEnPocheAvantImpot: cumulAvant,
+      dernierMois,
+      comparaisonJusquAuMois,
+      evoVariablePct: pct(variableBrut, prevSum((m) => m.variableBrut)),
+      evoNetEnPochePct: pct(netEnPocheApresImpot, prevSum((m) => m.netEnPocheApresImpot)),
     })
   }
   return out
-}
-
-/** Série cumulée mois par mois de ce qui a été perçu. */
-export function computeCumul(months: MonthStats[]): CumulPoint[] {
-  const acc = { netSalaire: 0, titresRestaurant: 0, partageValeurPercu: 0, partageValeurPlace: 0, pas: 0 }
-  return months.map((m) => {
-    acc.netSalaire += m.netSalaire
-    acc.titresRestaurant += m.titresRestaurant
-    acc.partageValeurPercu += m.partageValeurPercuNet
-    acc.partageValeurPlace += m.partageValeurPlaceNet
-    acc.pas += m.pas
-    const totalApresImpot = acc.netSalaire + acc.titresRestaurant + acc.partageValeurPercu + acc.partageValeurPlace
-    return {
-      key: m.key,
-      netSalaire: round2(acc.netSalaire),
-      titresRestaurant: round2(acc.titresRestaurant),
-      partageValeurPercu: round2(acc.partageValeurPercu),
-      partageValeurPlace: round2(acc.partageValeurPlace),
-      pas: round2(acc.pas),
-      totalApresImpot: round2(totalApresImpot),
-      totalAvantImpot: round2(totalApresImpot + acc.pas),
-    }
-  })
 }
 
 /**
@@ -451,7 +418,6 @@ export function computeSalaryStats(payslips: PayslipDto[]): SalaryStats {
   return {
     months,
     years: computeYearStats(months),
-    cumul: computeCumul(months),
     raises: detectRaises(payslips),
   }
 }
