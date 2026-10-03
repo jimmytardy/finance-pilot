@@ -60,5 +60,6 @@ next-env.d.ts
 # eslint
 .eslintcache
 
-# Bulletins de paie personnels (tests d’extraction IA)
+# Bulletins de paie personnels (tests d’extraction IA) : jamais versionnés
 examples/
+*.pdf
