@@ -14,3 +14,12 @@ export function formatYearMonthLabel(ym: string, language: string): string {
   if (!Number.isFinite(y) || !Number.isFinite(m) || m < 1 || m > 12) return ym
   return `${formatMonthLongName(m, language)} ${y}`
 }
+
+/** Affiche `YYYY-MM` en libellé court pour un axe de graphique (« janv. 22 »). */
+export function formatYearMonthShort(ym: string, language: string): string {
+  const [ys, ms] = ym.split('-')
+  const y = Number(ys)
+  const m = Number(ms)
+  if (!Number.isFinite(y) || !Number.isFinite(m) || m < 1 || m > 12) return ym
+  return new Date(y, m - 1, 1).toLocaleDateString(language, { month: 'short', year: '2-digit' })
+}

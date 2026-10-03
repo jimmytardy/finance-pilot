@@ -23,12 +23,17 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { formatCurrencyAmount } from '@/lib/i18n/locale'
-import { formatYearMonthLabel } from '@/lib/salary-month-label'
+import { formatYearMonthLabel, formatYearMonthShort } from '@/lib/salary-month-label'
 import { PARTAGE_VALEUR_KEYS, type SalaryStats, type YearStats } from '@/lib/salary-stats'
 import { fetchOpts, formatPct } from '@/components/salaires/payslip-format'
 
 type Granularity = 'year' | 'month'
 type TaxMode = 'apres' | 'avant'
+
+/** Infobulle : libellé complet du point survolé (l'axe affiche une forme courte). */
+function tooltipLabel(_: unknown, payload: ReadonlyArray<{ payload?: { label?: string } }> | undefined) {
+  return payload?.[0]?.payload?.label ?? null
+}
 
 /** Valeurs arrondies à l'euro pour les graphiques (lisibilité des infobulles). */
 const r0 = (n: number) => Math.round(n)
@@ -103,17 +108,21 @@ export function SalaryRecapView() {
     if (granularity === 'year') {
       return stats.years.map((y) => ({
         x: String(y.year),
+        label: String(y.year),
         fixe: r0(y.fixeBrut),
         variable: r0(y.variableBrut),
         partageValeur: r0(PARTAGE_VALEUR_KEYS.reduce((s, k) => s + y.partageValeur[k].brut, 0)),
+        finContrat: r0(y.finContratBrut),
         evo: y.evoFixeMensuelPct == null ? null : Math.round(y.evoFixeMensuelPct * 10) / 10,
       }))
     }
     return stats.months.map((m) => ({
-      x: formatYearMonthLabel(m.key, lng),
+      x: formatYearMonthShort(m.key, lng),
+      label: formatYearMonthLabel(m.key, lng),
       fixe: r0(m.fixeBrut),
       variable: r0(m.variableBrut),
       partageValeur: r0(PARTAGE_VALEUR_KEYS.reduce((s, k) => s + m.partageValeur[k].brut, 0)),
+      finContrat: r0(m.finContratBrut),
       evo: null,
     }))
   }, [stats, granularity, lng])
@@ -121,7 +130,8 @@ export function SalaryRecapView() {
   const cumulData = useMemo(
     () =>
       (stats?.cumul ?? []).map((c) => ({
-        x: formatYearMonthLabel(c.key, lng),
+        x: formatYearMonthShort(c.key, lng),
+        label: formatYearMonthLabel(c.key, lng),
         netSalaire: r0(c.netSalaire),
         titresRestaurant: r0(c.titresRestaurant),
         partageValeurPercu: r0(c.partageValeurPercu),
@@ -137,6 +147,7 @@ export function SalaryRecapView() {
         fixe: { label: t('salaries.stats.fixe'), color: 'var(--chart-1)' },
         variable: { label: t('salaries.stats.variable'), color: 'var(--chart-3)' },
         partageValeur: { label: t('salaries.stats.partageValeur'), color: 'var(--chart-4)' },
+        finContrat: { label: t('salaries.stats.finContrat'), color: 'var(--chart-5)' },
         evo: { label: t('salaries.stats.evoFixe'), color: 'var(--chart-2)' },
       }) satisfies ChartConfig,
     [t],
@@ -225,10 +236,11 @@ export function SalaryRecapView() {
                   dataKey="x"
                   tickLine={false}
                   axisLine={false}
-                  interval="preserveStartEnd"
-                  angle={granularity === 'month' ? -35 : 0}
+                  interval={0}
+                  angle={granularity === 'month' ? -60 : 0}
                   textAnchor={granularity === 'month' ? 'end' : 'middle'}
-                  height={granularity === 'month' ? 64 : 32}
+                  height={granularity === 'month' ? 56 : 32}
+                  tick={{ fontSize: granularity === 'month' ? 11 : 12 }}
                 />
                 <YAxis
                   yAxisId="eur"
@@ -247,15 +259,16 @@ export function SalaryRecapView() {
                     tickFormatter={(v) => `${v} %`}
                   />
                 ) : null}
-                <ChartTooltip content={<ChartTooltipContent />} />
+                <ChartTooltip content={<ChartTooltipContent labelFormatter={tooltipLabel} />} />
                 <ChartLegend content={<ChartLegendContent />} />
                 <Bar yAxisId="eur" dataKey="fixe" stackId="brut" fill="var(--color-fixe)" />
                 <Bar yAxisId="eur" dataKey="variable" stackId="brut" fill="var(--color-variable)" />
+                <Bar yAxisId="eur" dataKey="partageValeur" stackId="brut" fill="var(--color-partageValeur)" />
                 <Bar
                   yAxisId="eur"
-                  dataKey="partageValeur"
+                  dataKey="finContrat"
                   stackId="brut"
-                  fill="var(--color-partageValeur)"
+                  fill="var(--color-finContrat)"
                   radius={[4, 4, 0, 0]}
                 />
                 {granularity === 'year' ? (
@@ -318,13 +331,14 @@ export function SalaryRecapView() {
                   dataKey="x"
                   tickLine={false}
                   axisLine={false}
-                  interval="preserveStartEnd"
-                  angle={xBusy ? -35 : 0}
+                  interval={0}
+                  angle={xBusy ? -60 : 0}
                   textAnchor={xBusy ? 'end' : 'middle'}
-                  height={xBusy ? 64 : 32}
+                  height={xBusy ? 56 : 32}
+                  tick={{ fontSize: 11 }}
                 />
                 <YAxis tickLine={false} axisLine={false} width={80} tickFormatter={(v) => money(Number(v))} />
-                <ChartTooltip content={<ChartTooltipContent />} />
+                <ChartTooltip content={<ChartTooltipContent labelFormatter={tooltipLabel} />} />
                 <ChartLegend content={<ChartLegendContent />} />
                 {(['netSalaire', 'titresRestaurant', 'partageValeurPercu', 'partageValeurPlace'] as const).map((k) => (
                   <Area
@@ -422,6 +436,7 @@ export function SalaryRecapView() {
                   <TableHead className="text-right">{t('salaries.recapColMonthsCount')}</TableHead>
                   <TableHead className="text-right">{t('salaries.stats.fixe')}</TableHead>
                   <TableHead className="text-right">{t('salaries.stats.variable')}</TableHead>
+                  <TableHead className="text-right">{t('salaries.stats.finContrat')}</TableHead>
                   <TableHead className="text-right">{t('salaries.stats.cotisationsSalariales')}</TableHead>
                   <TableHead className="text-right">{t('salaries.totals.netPaye')}</TableHead>
                   <TableHead className="text-right">{t('salaries.stats.titresRestaurant')}</TableHead>
@@ -437,6 +452,9 @@ export function SalaryRecapView() {
                     <TableCell className="text-right tabular-nums">{y.monthsWorked}</TableCell>
                     <TableCell className="text-right tabular-nums">{money(y.fixeBrut)}</TableCell>
                     <TableCell className="text-right tabular-nums">{money(y.variableBrut)}</TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {y.finContratBrut !== 0 ? money(y.finContratBrut) : '—'}
+                    </TableCell>
                     <TableCell className="text-right tabular-nums">{money(y.cotisationsSalariales)}</TableCell>
                     <TableCell className="text-right tabular-nums">{money(y.netPaye)}</TableCell>
                     <TableCell className="text-right tabular-nums">{money(y.titresRestaurant)}</TableCell>
