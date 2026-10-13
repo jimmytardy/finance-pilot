@@ -63,3 +63,6 @@ next-env.d.ts
 # Bulletins de paie personnels (tests d’extraction IA) : jamais versionnés
 examples/
 *.pdf
+
+# Sortie générée par graphify (graphe et cache)
+graphify-out/
