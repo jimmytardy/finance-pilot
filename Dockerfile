@@ -48,18 +48,17 @@ RUN pnpm prisma generate && pnpm build
 FROM node:${NODE_VERSION}-bookworm-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production \
-  HOSTNAME=0.0.0.0 \
-  PNPM_HOME="/pnpm" \
-  PATH="/pnpm:$PATH"
+  HOSTNAME=0.0.0.0
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends openssl ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
+# CLI Prisma pour docker-entrypoint.sh (migrate deploy / db push). npm plutôt que
+# pnpm + corepack : pas de store pnpm ni de cache corepack dans l'image (~-200 Mo).
 ARG PRISMA_VERSION
-RUN corepack enable && corepack prepare pnpm@9.15.0 --activate \
-  && pnpm config set global-bin-dir /usr/local/bin \
-  && pnpm add --global prisma@${PRISMA_VERSION}
+RUN npm install --global --no-audit --no-fund prisma@${PRISMA_VERSION} \
+  && npm cache clean --force
 
 RUN groupadd --system --gid 1001 nodejs \
   && useradd --system --uid 1001 --gid nodejs nextjs
