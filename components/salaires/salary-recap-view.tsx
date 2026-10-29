@@ -110,6 +110,28 @@ export function SalaryRecapView() {
     [lng],
   )
 
+  /**
+   * Prévisionnel de l'année civile en cours : le salaire de base du bulletin le plus récent est
+   * reconduit sur chaque mois restant jusqu'à décembre.
+   */
+  const forecast = useMemo(() => {
+    if (!stats) return null
+    const latest = stats.months.findLast((m) => m.hasBulletin)
+    const currentYear = new Date().getFullYear()
+    if (!latest || latest.year !== currentYear || latest.month >= 12 || latest.salaireBase <= 0) return null
+    const monthKeys = Array.from(
+      { length: 12 - latest.month },
+      (_, i) => `${latest.year}-${String(latest.month + 1 + i).padStart(2, '0')}`,
+    )
+    return {
+      year: latest.year,
+      fromKey: latest.key,
+      base: latest.salaireBase,
+      monthKeys,
+      total: latest.salaireBase * monthKeys.length,
+    }
+  }, [stats])
+
   const fixeVariableData = useMemo(() => {
     if (!stats) return []
     if (granularity === 'year') {
@@ -120,20 +142,34 @@ export function SalaryRecapView() {
         variable: r0(y.variableBrut),
         partageValeur: r0(PARTAGE_VALEUR_KEYS.reduce((s, k) => s + y.partageValeur[k].brut, 0)),
         finContrat: r0(y.finContratBrut),
+        previsionnel: forecast?.year === y.year ? r0(forecast.total) : null,
         // Annualisé pour être comparable aux barres (totaux annuels), sur le même axe.
         salaireBase: y.salaireBaseMoyen > 0 ? r0(y.salaireBaseMoyen * 12) : null,
       }))
     }
-    return stats.months.map((m) => ({
+    const realMonths = stats.months.map((m) => ({
       x: formatYearMonthShort(m.key, lng),
       label: formatYearMonthLabel(m.key, lng),
       fixe: r0(m.fixeBrut),
       variable: r0(m.variableBrut),
       partageValeur: r0(PARTAGE_VALEUR_KEYS.reduce((s, k) => s + m.partageValeur[k].brut, 0)),
       finContrat: r0(m.finContratBrut),
+      previsionnel: null,
       salaireBase: m.salaireBase > 0 ? r0(m.salaireBase) : null,
     }))
-  }, [stats, granularity, lng])
+    if (!forecast) return realMonths
+    const forecastMonths = forecast.monthKeys.map((key) => ({
+      x: formatYearMonthShort(key, lng),
+      label: formatYearMonthLabel(key, lng),
+      fixe: null,
+      variable: null,
+      partageValeur: null,
+      finContrat: null,
+      previsionnel: r0(forecast.base),
+      salaireBase: null,
+    }))
+    return [...realMonths, ...forecastMonths]
+  }, [stats, granularity, lng, forecast])
 
   const fixeVariableConfig = useMemo(
     () =>
@@ -142,6 +178,11 @@ export function SalaryRecapView() {
         variable: { label: t('salaries.stats.variable'), color: 'var(--chart-3)' },
         partageValeur: { label: t('salaries.stats.partageValeur'), color: 'var(--chart-4)' },
         finContrat: { label: t('salaries.stats.finContrat'), color: 'var(--chart-5)' },
+        previsionnel: {
+          label: t('salaries.stats.previsionnel'),
+          // Vue annuelle : teinte propre (doré) pour distinguer le prévisionnel de l'année en cours.
+          color: granularity === 'year' ? 'oklch(0.78 0.15 85)' : 'var(--muted-foreground)',
+        },
         salaireBase: {
           label: granularity === 'year' ? t('salaries.stats.salaireBaseMoyen') : t('salaries.stats.salaireBase'),
           color: 'var(--chart-2)',
@@ -257,6 +298,18 @@ export function SalaryRecapView() {
                   fill="var(--color-finContrat)"
                   radius={[4, 4, 0, 0]}
                 />
+                {forecast ? (
+                  <Bar
+                    yAxisId="eur"
+                    dataKey="previsionnel"
+                    stackId="brut"
+                    fill="var(--color-previsionnel)"
+                    fillOpacity={granularity === 'year' ? 0.7 : 0.25}
+                    stroke="var(--color-previsionnel)"
+                    strokeDasharray="4 3"
+                    radius={[4, 4, 0, 0]}
+                  />
+                ) : null}
                 <Line
                   yAxisId="eur"
                   type="monotone"
@@ -269,6 +322,18 @@ export function SalaryRecapView() {
               </ComposedChart>
             </ChartContainer>
           )}
+          {forecast ? (
+            <p className="mt-3 text-sm text-muted-foreground">
+              {t('salaries.stats.previsionnelSummary', {
+                year: forecast.year,
+                total: money(forecast.total),
+                base: money(forecast.base),
+                count: forecast.monthKeys.length,
+                mois: formatYearMonthLabel(forecast.fromKey, lng),
+                fixeTotal: money((years.find((y) => y.year === forecast.year)?.fixeBrut ?? 0) + forecast.total),
+              })}
+            </p>
+          ) : null}
           {stats && stats.raises.length > 0 ? (
             <div className="mt-4">
               <h3 className="mb-1 text-sm font-semibold">{t('salaries.stats.raisesTitle')}</h3>

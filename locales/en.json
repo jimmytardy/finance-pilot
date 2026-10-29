@@ -291,6 +291,8 @@
       "finContrat": "End of contract",
       "fixeVariableTitle": "Fixed and variable pay",
       "fixeVariableLead": "Bars: fixed gross (base salary, seniority, leave…), variable bonuses, profit sharing and end-of-contract payments. Line: base salary (monthly average × 12 in the yearly view, monthly amount in the monthly view).",
+      "previsionnel": "Forecast (base salary)",
+      "previsionnelSummary": "{{year}} forecast: {{total}} estimated fixed gross ({{base}} base salary × {{count}} remaining months, based on the {{mois}} payslip), i.e. {{fixeTotal}} fixed gross for the year.",
       "raisesTitle": "Base salary changes",
       "titresRestaurant": "Meal vouchers",
       "pas": "Income tax withheld",

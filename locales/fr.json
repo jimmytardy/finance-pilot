@@ -291,6 +291,8 @@
       "finContrat": "Fin de contrat",
       "fixeVariableTitle": "Fixe et variable",
       "fixeVariableLead": "Barres : brut fixe (salaire de base, ancienneté, congés…), primes variables, partage de la valeur et indemnités de fin de contrat. Courbe : salaire de base (moyenne mensuelle × 12 en vue annuelle, montant du mois en vue mensuelle).",
+      "previsionnel": "Prévisionnel (salaire de base)",
+      "previsionnelSummary": "Prévisionnel {{year}} : {{total}} brut fixe estimé ({{base}} de salaire de base × {{count}} mois restants, d'après le bulletin de {{mois}}), soit {{fixeTotal}} de brut fixe sur l'année.",
       "raisesTitle": "Changements du salaire de base",
       "titresRestaurant": "Titres-restaurant",
       "pas": "Prélèvement à la source",
